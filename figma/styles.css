@@ -1,0 +1,699 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #ffffff;
+    color: #000000;
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+.main-container {
+    width: 100%;
+    min-height: 100vh;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Header */
+.header {
+    padding: 32px 0 20px 70px;
+}
+
+.title {
+    font-size: 32px;
+    font-weight: 400;
+    color: #000000;
+}
+
+/* Dividers */
+.divider {
+    width: calc(100% + 40px);
+    height: 5px;
+    background: linear-gradient(to right, #313C41 0%, #313C41 100%);
+    margin: 20px -20px;
+}
+
+.divider-top {
+    margin-top: 0;
+}
+
+/* Section Base Styles */
+.section {
+    padding: 20px 0;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.section-title {
+    font-size: 32px;
+    font-weight: 400;
+    color: #000000;
+    margin-bottom: 20px;
+}
+
+.section-subtitle {
+    font-size: 20px;
+    font-weight: 400;
+    color: #000000;
+    text-align: right;
+    position: absolute;
+    top: 20px;
+    right: 100px;
+}
+
+.section-header {
+    margin-bottom: 30px;
+    position: relative;
+}
+
+/* Rotas Anteriores Section */
+.rotas-anteriores {
+    padding-left: 100px;
+}
+
+.rotas-grid {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.card-rota {
+    width: 491px;
+    height: 534px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.rota-header {
+    background-color: #313C41;
+    padding: 10px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 10px 10px 0 0;
+    height: 46px;
+}
+
+.rota-name {
+    font-size: 32px;
+    color: #F6F6F6;
+    font-weight: 400;
+}
+
+.rota-distance {
+    font-size: 24px;
+    color: #F6F6F6;
+    font-weight: 400;
+}
+
+.rota-body {
+    background-color: #C8C8C8;
+    padding: 20px;
+    height: calc(534px - 46px);
+    border-radius: 0 0 10px 10px;
+}
+
+.rota-time {
+    font-size: 24px;
+    color: #000000;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.rota-vmedia {
+    font-size: 24px;
+    color: #000000;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.rota-consumo {
+    font-size: 24px;
+    color: #000000;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.mapa-container {
+    width: 100%;
+    height: 320px;
+    margin-top: 10px;
+}
+
+.mapa-placeholder {
+    background-color: #EC8A8A;
+    border-radius: 15px;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.mapa-text {
+    font-size: 32px;
+    color: #000000;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.map-route {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.truck-icon {
+    position: absolute;
+    font-size: 32px;
+    z-index: 3;
+    transition: all 0.3s ease;
+}
+
+.award-icon {
+    position: absolute;
+    font-size: 32px;
+    z-index: 3;
+    transition: all 0.3s ease;
+}
+
+.btn-rotas-limpar {
+    margin-left: 460px;
+    margin-top: 10px;
+}
+
+/* Consumo desde a última carga */
+.consumo-carga {
+    padding-left: 100px;
+}
+
+.consumo-list {
+    list-style-type: disc;
+    padding-left: 48px;
+    font-size: 32px;
+}
+
+.consumo-list li {
+    margin-bottom: 8px;
+}
+
+/* Status Carrinho */
+.status-carrinho {
+    padding-left: 100px;
+}
+
+.status-grid {
+    display: flex;
+    gap: 17px;
+    flex-wrap: wrap;
+}
+
+.status-card {
+    width: 350px;
+    height: 127px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.status-header {
+    background-color: #313C41;
+    color: #F6F6F6;
+    font-size: 30px;
+    text-align: center;
+    padding: 8px;
+    border-radius: 10px 10px 0 0;
+    height: 49px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-value {
+    background-color: #C8C8C8;
+    color: #000000;
+    font-size: 40px;
+    text-align: center;
+    padding: 20px;
+    border-radius: 0 0 10px 10px;
+    height: 78px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Main Content Grid */
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 50px;
+    padding: 0 80px;
+    margin-bottom: 30px;
+}
+
+/* Enviar Rota */
+.enviar-rota {
+    padding: 0;
+}
+
+.elementos-adicionados {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+    min-height: 80px;
+}
+
+.elementos-adicionados:empty::before {
+    content: "Adicione elementos para criar uma rota";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80px;
+    color: #999;
+    font-size: 16px;
+    font-style: italic;
+}
+
+.elemento-item {
+    height: 77px;
+    border-radius: 0 10px 10px 0;
+    display: flex;
+    align-items: center;
+    padding: 0 10px 0 15px;
+    position: relative;
+}
+
+.elemento-item.distancia {
+    background-color: #31A208;
+    width: 213px;
+}
+
+.elemento-item.rotacao {
+    background-color: #0026B8;
+    width: 399px;
+}
+
+.elemento-content {
+    flex: 1;
+    margin-right: 10px;
+}
+
+.elemento-label {
+    font-size: 18px;
+    color: #F6F6F6;
+    line-height: 1.3;
+}
+
+.elemento-label-small {
+    font-size: 18px;
+    color: #F6F6F6;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.elemento-value {
+    font-size: 18px;
+    color: #F6F6F6;
+    line-height: 1.3;
+}
+
+.btn-remover {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    background-color: #F6F6F6;
+    border: none;
+    border-radius: 3px;
+    font-size: 28px;
+    line-height: 1;
+    color: #000000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-direcao {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    background-color: #F6F6F6;
+    border: none;
+    border-radius: 3px;
+    font-size: 16px;
+    color: #000000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-left: 5px;
+}
+
+.elemento-numero {
+    position: absolute;
+    right: 8px;
+    bottom: 5px;
+    font-size: 12px;
+    color: #F6F6F6;
+}
+
+/* Adicionar elementos */
+.adicionar-elementos {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.adicionar-card {
+    border-radius: 10px;
+    padding: 10px;
+    position: relative;
+    height: 77px;
+    background-color: #C8C8C8;
+}
+
+.adicionar-card.rotacao-add {
+    width: 399px;
+}
+
+.adicionar-card.distancia-add {
+    width: 213px;
+}
+
+.add-label {
+    font-size: 18px;
+    color: #000000;
+    position: absolute;
+    top: 10px;
+    left: 50px;
+}
+
+.add-label-top {
+    font-size: 18px;
+    color: #000000;
+    position: absolute;
+    top: 8px;
+    right: 50px;
+}
+
+.add-label-left {
+    font-size: 18px;
+    color: #000000;
+    position: absolute;
+    left: 50px;
+    top: 8px;
+}
+
+.add-input {
+    position: absolute;
+    bottom: 15px;
+    left: 50px;
+    right: 50px;
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid #666;
+    font-size: 18px;
+    color: #000000;
+    outline: none;
+    padding: 3px 5px;
+}
+
+.distancia-add .add-input {
+    right: 15px;
+}
+
+.add-input-graus {
+    right: 130px;
+    width: 80px;
+}
+
+.add-select-direcao {
+    position: absolute;
+    bottom: 15px;
+    right: 10px;
+    width: 115px;
+    height: 30px;
+    background-color: #F6F6F6;
+    border: 1px solid #666;
+    border-radius: 5px;
+    font-size: 16px;
+    color: #000000;
+    outline: none;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.add-select-direcao:focus {
+    border-color: #0026B8;
+    box-shadow: 0 0 3px rgba(0, 38, 184, 0.3);
+}
+
+.btn-add {
+    width: 30px;
+    height: 30px;
+    background-color: #F6F6F6;
+    border: none;
+    border-radius: 3px;
+    font-size: 22px;
+    line-height: 1;
+    color: #000000;
+    cursor: pointer;
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Botões de ação */
+.acoes {
+    display: flex;
+    gap: 15px;
+}
+
+.btn-concluir {
+    background-color: #31A208;
+    color: #F6F6F6;
+    font-size: 18px;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+.btn-limpar {
+    background-color: #A21508;
+    color: #F6F6F6;
+    font-size: 18px;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+/* Trajetória */
+.trajetoria {
+    padding: 0;
+}
+
+.trajetoria-card {
+    background-color: #0026B8;
+    border-radius: 20px;
+    padding: 30px;
+    color: #F6F6F6;
+}
+
+.trajetoria-info {
+    font-size: 18px;
+    color: #F6F6F6;
+    margin-bottom: 8px;
+}
+
+.mapa-grande {
+    background-color: #EC8A8A;
+    border-radius: 15px;
+    width: 100%;
+    max-width: 427px;
+    height: 358px;
+    margin-top: 20px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.map-route-large {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.truck-icon-large {
+    position: absolute;
+    font-size: 40px;
+    z-index: 3;
+    transition: all 0.3s ease;
+}
+
+.award-icon-large {
+    position: absolute;
+    font-size: 40px;
+    z-index: 3;
+    transition: all 0.3s ease;
+}
+
+/* Status Percurso */
+.status-percurso {
+    padding-left: 80px;
+    clear: both;
+}
+
+.status-percurso-section {
+    margin-top: 40px;
+}
+
+.status-percurso-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 234px);
+    gap: 32px;
+}
+
+.status-percurso-card {
+    width: 234px;
+    height: 161px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.status-percurso-card .status-header {
+    background-color: #313C41;
+    color: #F6F6F6;
+    font-size: 30px;
+    text-align: center;
+    padding: 12px;
+    border-radius: 10px 10px 0 0;
+    height: 65px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-percurso-card .status-value {
+    background-color: #C8C8C8;
+    color: #000000;
+    font-size: 30px;
+    text-align: center;
+    padding: 20px;
+    border-radius: 0 0 10px 10px;
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Buttons hover effects */
+button:hover {
+    opacity: 0.85;
+    transition: opacity 0.2s;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .status-percurso-grid {
+        grid-template-columns: repeat(2, 234px);
+    }
+}
+
+@media (max-width: 1100px) {
+    .rotas-grid {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 20px 0 20px 20px;
+    }
+    
+    .rotas-anteriores,
+    .consumo-carga,
+    .status-carrinho,
+    .status-percurso {
+        padding-left: 20px;
+    }
+    
+    .main-content {
+        padding: 0 20px;
+    }
+    
+    .card-rota {
+        width: 100%;
+        max-width: 491px;
+    }
+    
+    .adicionar-elementos {
+        flex-direction: column;
+    }
+    
+    .adicionar-card {
+        width: 100% !important;
+        max-width: 399px;
+    }
+    
+    .elemento-item {
+        width: 100% !important;
+        max-width: 399px;
+    }
+    
+    .status-grid {
+        justify-content: center;
+    }
+    
+    .status-percurso-grid {
+        grid-template-columns: repeat(auto-fit, 234px);
+        justify-content: center;
+    }
+    
+    .section-subtitle {
+        position: static;
+        text-align: center;
+        margin-top: 10px;
+    }
+}
