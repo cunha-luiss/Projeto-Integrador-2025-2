@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const $ = (sel) => document.querySelector(sel);
     const $$ = (sel) => document.querySelectorAll(sel);
     
-    const btnAddDistancia = $('.distancia-add .btn-add');
-    const btnAddRotacao = $('.rotacao-add .btn-add');
+    const btnAddDistancia = $('#btn-add-distancia');
+    const btnAddRotacao = $('#btn-add-rotacao');
     const inputDistancia = $('#input-distancia');
     const inputRotacao = $('#input-graus');
     const selectDirecao = $('#select-direcao');
