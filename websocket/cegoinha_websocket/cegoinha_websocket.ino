@@ -27,7 +27,501 @@ const char index_html[] PROGMEM = R"rawliteral(<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cegoinha</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#fff;color:#000;line-height:1.5;overflow-x:hidden}.main-container{width:100%;min-height:100vh;padding:10px;max-width:1400px;margin:0 auto}.header{padding:20px 0 10px 40px}.title{font-size:24px;font-weight:400}.divider{width:100%;height:3px;background:#313C41;margin:15px 0}.section{padding:15px 0;margin-bottom:15px;position:relative}.section-title{font-size:20px;margin-bottom:15px}.rotas-anteriores,.consumo-carga,.status-carrinho{padding-left:40px}.rotas-grid{display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap}.card-rota{width:320px;height:380px;border-radius:8px;overflow:hidden;flex-shrink:0}.rota-header{background:#313C41;padding:8px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:8px 8px 0 0;height:36px}.rota-name{font-size:18px;color:#F6F6F6}.rota-distance{font-size:16px;color:#F6F6F6}.rota-body{background:#C8C8C8;padding:15px;height:344px;border-radius:0 0 8px 8px}.rota-time,.rota-vmedia,.rota-consumo{font-size:14px;text-align:center;margin-bottom:6px}.mapa-container{width:100%;height:220px;margin-top:8px}.mapa-placeholder,.mapa-grande{background:#EC8A8A;border-radius:12px;width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}.map-route,.map-route-large{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none}.truck-icon,.award-icon,.truck-icon-large,.award-icon-large{position:absolute;font-size:24px;z-index:3;transition:all .3s ease}.truck-icon-large,.award-icon-large{font-size:32px}.btn-rotas-limpar{margin-left:320px;margin-top:8px}.consumo-list{list-style:disc;padding-left:30px;font-size:16px}.consumo-list li{margin-bottom:6px}.status-grid{display:flex;gap:12px;flex-wrap:wrap}.status-card{width:280px;height:100px;border-radius:8px;overflow:hidden;flex-shrink:0}.status-header{background:#313C41;color:#F6F6F6;font-size:18px;text-align:center;padding:6px;border-radius:8px 8px 0 0;height:38px;display:flex;align-items:center;justify-content:center}.status-value{background:#C8C8C8;font-size:24px;text-align:center;padding:15px;border-radius:0 0 8px 8px;height:62px;display:flex;align-items:center;justify-content:center}.main-content{display:grid;grid-template-columns:1fr 1fr;gap:30px;padding:0 40px;margin-bottom:20px}.enviar-rota,.trajetoria{padding:0}.elementos-adicionados{display:flex;flex-direction:column;gap:8px;margin-bottom:15px;min-height:60px}.elementos-adicionados:empty::before{content:"Adicione elementos";display:flex;align-items:center;justify-content:center;height:60px;color:#999;font-size:14px;font-style:italic}.elemento-item{height:60px;border-radius:0 8px 8px 0;display:flex;align-items:center;padding:0 8px 0 12px;position:relative}.elemento-item.distancia{background:#31A208;width:180px}.elemento-item.rotacao{background:#0026B8;width:320px}.elemento-content{flex:1;margin-right:8px}.elemento-label,.elemento-label-small,.elemento-value{font-size:14px;color:#F6F6F6;line-height:1.2}.btn-remover,.btn-direcao,.btn-add{width:24px;height:24px;min-width:24px;background:#F6F6F6;border:none;border-radius:3px;color:#000;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}.btn-remover{font-size:20px;line-height:1}.btn-direcao{font-size:12px;margin-left:4px}.btn-add{font-size:18px;position:absolute;left:8px;top:50%;transform:translateY(-50%)}.elemento-numero{position:absolute;right:6px;bottom:4px;font-size:10px;color:#F6F6F6}.adicionar-elementos{display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap}.adicionar-card{border-radius:8px;padding:8px;position:relative;height:60px;background:#C8C8C8}.adicionar-card.rotacao-add{width:320px}.adicionar-card.distancia-add{width:180px}.add-label,.add-label-top,.add-label-left{font-size:14px;position:absolute}.add-label{top:8px;left:38px}.add-label-top{top:6px;right:38px}.add-label-left{left:38px;top:6px}.add-input{position:absolute;bottom:12px;left:38px;right:38px;background:transparent;border:none;border-bottom:1px solid #666;font-size:14px;outline:none;padding:2px 4px}.distancia-add .add-input{right:12px}.add-input-graus{right:100px;width:60px}.add-select-direcao{position:absolute;bottom:12px;right:8px;width:88px;height:24px;background:#F6F6F6;border:1px solid #666;border-radius:4px;font-size:12px;outline:none;padding:2px 6px;cursor:pointer}.add-select-direcao:focus{border-color:#0026B8;box-shadow:0 0 2px rgba(0,38,184,.3)}.acoes{display:flex;gap:12px}.btn-concluir,.btn-limpar{color:#F6F6F6;font-size:14px;padding:10px 24px;border:none;border-radius:8px;cursor:pointer}.btn-concluir{background:#31A208}.btn-limpar{background:#A21508}.trajetoria-card{background:#0026B8;border-radius:15px;padding:20px;color:#F6F6F6}.trajetoria-info{font-size:14px;color:#F6F6F6;margin-bottom:6px}.mapa-grande{max-width:350px;height:280px;margin-top:15px}.status-percurso{padding-left:40px;clear:both}.status-percurso-section{margin-top:30px}.status-percurso-grid{display:grid;grid-template-columns:repeat(2,180px);gap:24px}.status-percurso-card{width:180px;height:120px;border-radius:8px;overflow:hidden}.status-percurso-card .status-header{height:50px;padding:10px}.status-percurso-card .status-value{font-size:20px;height:70px}button:hover{opacity:.85;transition:opacity .2s}button:active{transform:scale(.98)}@media(max-width:1400px){.main-content{grid-template-columns:1fr}.status-percurso-grid{grid-template-columns:repeat(2,180px)}}@media(max-width:768px){.header{padding:15px 0 15px 15px}.rotas-anteriores,.consumo-carga,.status-carrinho,.status-percurso{padding-left:15px}.main-content{padding:0 15px}.card-rota{width:100%;max-width:320px}.adicionar-elementos{flex-direction:column}.adicionar-card{width:100%!important;max-width:320px}.elemento-item{width:100%!important;max-width:320px}.status-grid{justify-content:center}.status-percurso-grid{grid-template-columns:repeat(auto-fit,180px);justify-content:center}}
+/* Reset and Base */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #fff;
+    color: #000;
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+.main-container {
+    width: 100%;
+    min-height: 100vh;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.header { padding: 32px 0 20px 70px; }
+
+.title, .section-title {
+    font-size: 32px;
+    font-weight: 400;
+    margin-bottom: 20px;
+}
+
+.divider {
+    width: calc(100% + 40px);
+    height: 5px;
+    background: #313C41;
+    margin: 20px -20px;
+}
+
+.divider-top { margin-top: 0; }
+
+.section {
+    padding: 20px 0;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.section-subtitle {
+    font-size: 20px;
+    font-weight: 400;
+    text-align: right;
+    position: absolute;
+    top: 20px;
+    right: 100px;
+}
+
+.section-header {
+    margin-bottom: 30px;
+    position: relative;
+}
+
+/* Rotas Anteriores */
+.rotas-anteriores, .consumo-carga, .status-carrinho { padding-left: 100px; }
+
+.rotas-grid {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.card-rota {
+    width: 491px;
+    height: 534px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.rota-header {
+    background: #313C41;
+    padding: 10px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 10px 10px 0 0;
+    height: 46px;
+}
+
+.rota-name { font-size: 32px; color: #F6F6F6; }
+.rota-distance { font-size: 24px; color: #F6F6F6; }
+
+.rota-body {
+    background: #C8C8C8;
+    padding: 20px;
+    height: 488px;
+    border-radius: 0 0 10px 10px;
+}
+
+.rota-time, .rota-vmedia, .rota-consumo {
+    font-size: 24px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.rota-consumo { margin-bottom: 15px; }
+
+.mapa-container {
+    width: 100%;
+    height: 320px;
+    margin-top: 10px;
+}
+
+.mapa-placeholder, .mapa-grande {
+    background: #EC8A8A;
+    border-radius: 15px;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.mapa-text {
+    font-size: 32px;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.map-route, .map-route-large {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.truck-icon, .award-icon, .truck-icon-large, .award-icon-large {
+    position: absolute;
+    font-size: 32px;
+    z-index: 3;
+    transition: all 0.3s ease;
+}
+
+.truck-icon-large, .award-icon-large { font-size: 40px; }
+
+.btn-rotas-limpar {
+    margin-left: 460px;
+    margin-top: 10px;
+}
+
+/* Consumo e Status */
+.consumo-list {
+    list-style: disc;
+    padding-left: 48px;
+    font-size: 32px;
+}
+
+.consumo-list li { margin-bottom: 8px; }
+
+.status-grid {
+    display: flex;
+    gap: 17px;
+    flex-wrap: wrap;
+}
+
+.status-card {
+    width: 350px;
+    height: 127px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.status-header {
+    background: #313C41;
+    color: #F6F6F6;
+    font-size: 30px;
+    text-align: center;
+    padding: 8px;
+    border-radius: 10px 10px 0 0;
+    height: 49px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-value {
+    background: #C8C8C8;
+    font-size: 40px;
+    text-align: center;
+    padding: 20px;
+    border-radius: 0 0 10px 10px;
+    height: 78px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Main Content */
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 50px;
+    padding: 0 80px;
+    margin-bottom: 30px;
+}
+
+.enviar-rota, .trajetoria { padding: 0; }
+
+.elementos-adicionados {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+    min-height: 80px;
+}
+
+.elementos-adicionados:empty::before {
+    content: "Adicione elementos para criar uma rota";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80px;
+    color: #999;
+    font-size: 16px;
+    font-style: italic;
+}
+
+.elemento-item {
+    height: 77px;
+    border-radius: 0 10px 10px 0;
+    display: flex;
+    align-items: center;
+    padding: 0 10px 0 15px;
+    position: relative;
+}
+
+.elemento-item.distancia {
+    background-color: #31A208;
+    width: 213px;
+}
+
+.elemento-item.rotacao {
+    background-color: #0026B8;
+    width: 399px;
+}
+
+.elemento-content {
+    flex: 1;
+    margin-right: 10px;
+}
+
+.elemento-label, .elemento-label-small, .elemento-value {
+    font-size: 18px;
+    color: #F6F6F6;
+    line-height: 1.3;
+}
+
+.elemento-label-small { margin: 0; }
+
+.btn-remover, .btn-direcao, .btn-add {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    background: #F6F6F6;
+    border: none;
+    border-radius: 3px;
+    color: #000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-remover { font-size: 28px; line-height: 1; }
+.btn-direcao { font-size: 16px; margin-left: 5px; }
+.btn-add {
+    font-size: 22px;
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.elemento-numero {
+    position: absolute;
+    right: 8px;
+    bottom: 5px;
+    font-size: 12px;
+    color: #F6F6F6;
+}
+
+/* Adicionar */
+.adicionar-elementos {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.adicionar-card {
+    border-radius: 10px;
+    padding: 10px;
+    position: relative;
+    height: 77px;
+    background: #C8C8C8;
+}
+
+.adicionar-card.rotacao-add { width: 399px; }
+.adicionar-card.distancia-add { width: 213px; }
+
+.add-label, .add-label-top, .add-label-left {
+    font-size: 18px;
+    position: absolute;
+}
+
+.add-label { top: 10px; left: 50px; }
+.add-label-top { top: 8px; right: 50px; }
+.add-label-left { left: 50px; top: 8px; }
+
+.add-input {
+    position: absolute;
+    bottom: 15px;
+    left: 50px;
+    right: 50px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #666;
+    font-size: 18px;
+    outline: none;
+    padding: 3px 5px;
+}
+
+.distancia-add .add-input { right: 15px; }
+.add-input-graus { right: 130px; width: 80px; }
+
+.add-select-direcao {
+    position: absolute;
+    bottom: 15px;
+    right: 10px;
+    width: 115px;
+    height: 30px;
+    background: #F6F6F6;
+    border: 1px solid #666;
+    border-radius: 5px;
+    font-size: 16px;
+    outline: none;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.add-select-direcao:focus {
+    border-color: #0026B8;
+    box-shadow: 0 0 3px rgba(0, 38, 184, 0.3);
+}
+
+/* Botões */
+.acoes { display: flex; gap: 15px; }
+
+.btn-concluir, .btn-limpar {
+    color: #F6F6F6;
+    font-size: 18px;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.btn-concluir { background: #31A208; }
+.btn-limpar { background: #A21508; }
+
+/* Trajetória */
+.trajetoria-card {
+    background: #0026B8;
+    border-radius: 20px;
+    padding: 30px;
+    color: #F6F6F6;
+}
+
+.trajetoria-info {
+    font-size: 18px;
+    color: #F6F6F6;
+    margin-bottom: 8px;
+}
+
+.mapa-grande {
+    max-width: 427px;
+    height: 358px;
+    margin-top: 20px;
+}
+
+/* Status Percurso */
+.status-percurso {
+    padding-left: 80px;
+    clear: both;
+}
+
+.status-percurso-section { margin-top: 40px; }
+
+.status-percurso-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 234px);
+    gap: 32px;
+}
+
+.status-percurso-card {
+    width: 234px;
+    height: 161px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.status-percurso-card .status-header {
+    height: 65px;
+    padding: 12px;
+}
+
+.status-percurso-card .status-value {
+    font-size: 30px;
+    height: 96px;
+}
+
+/* Interações */
+button:hover { opacity: 0.85; transition: opacity 0.2s; }
+button:active { transform: scale(0.98); }
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .status-percurso-grid {
+        grid-template-columns: repeat(2, 234px);
+    }
+}
+
+@media (max-width: 1100px) {
+    .rotas-grid {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 20px 0 20px 20px;
+    }
+    
+    .rotas-anteriores,
+    .consumo-carga,
+    .status-carrinho,
+    .status-percurso {
+        padding-left: 20px;
+    }
+    
+    .main-content {
+        padding: 0 20px;
+    }
+    
+    .card-rota {
+        width: 100%;
+        max-width: 491px;
+    }
+    
+    .adicionar-elementos {
+        flex-direction: column;
+    }
+    
+    .adicionar-card {
+        width: 100% !important;
+        max-width: 399px;
+    }
+    
+    .elemento-item {
+        width: 100% !important;
+        max-width: 399px;
+    }
+    
+    .status-grid {
+        justify-content: center;
+    }
+    
+    .status-percurso-grid {
+        grid-template-columns: repeat(auto-fit, 234px);
+        justify-content: center;
+    }
+    
+    .section-subtitle {
+        position: static;
+        text-align: center;
+        margin-top: 10px;
+    }
+}
 </style>
 </head>
 <body>
@@ -108,17 +602,365 @@ const char index_html[] PROGMEM = R"rawliteral(<!DOCTYPE html>
 </div>
 </div>
 <script>
-var gateway=`ws://${window.location.hostname}/ws`;var websocket;
-document.addEventListener('DOMContentLoaded',()=>{
-initWebSocket();
-let rotas=[],rotaAtual={elementos:[]};const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s),btnAddDistancia=$('#btn-add-distancia'),btnAddRotacao=$('#btn-add-rotacao'),inputDistancia=$('#input-distancia'),inputRotacao=$('#input-graus'),selectDirecao=$('#select-direcao'),btnConcluir=$('.btn-concluir'),btnLimparRota=$('.enviar-rota .btn-limpar'),btnLimparRotas=$('.btn-rotas-limpar'),elementosContainer=$('.elementos-adicionados'),rotasAnterioresContainer=$('.rotas-grid'),svgTrajetoria=$('.map-route-large'),mapaInfo={distancia:$$('.trajetoria-info')[0],tempo:$$('.trajetoria-info')[1]};
-function initWebSocket(){console.log('Conectando WebSocket...');websocket=new WebSocket(gateway);websocket.onopen=()=>console.log('WebSocket conectado');websocket.onclose=()=>{console.log('WebSocket desconectado');setTimeout(initWebSocket,2000)};websocket.onerror=e=>console.error('Erro WebSocket:',e)}
-const calcularTrajetoria=(elementos,viewBoxWidth,viewBoxHeight,margem)=>{let pontos=[{x:0,y:0}],x=0,y=0,angulo=0;elementos.forEach(el=>{if(el.tipo==='distancia'){const distancia=parseFloat(el.valor),radianos=(angulo-90)*Math.PI/180;x+=distancia*Math.cos(radianos);y+=distancia*Math.sin(radianos);pontos.push({x,y})}else if(el.tipo==='rotacao'){angulo+=parseFloat(el.valor)*(el.direcao==='direita'?1:-1);angulo=((angulo%360)+360)%360}});const minX=Math.min(...pontos.map(p=>p.x)),maxX=Math.max(...pontos.map(p=>p.x)),minY=Math.min(...pontos.map(p=>p.y)),maxY=Math.max(...pontos.map(p=>p.y)),largura=maxX-minX,altura=maxY-minY,escala=(largura<1&&altura<1)?10:Math.min(largura>0?(viewBoxWidth-2*margem)/largura:10,altura>0?(viewBoxHeight-2*margem)/altura:10),offsetX=viewBoxWidth/2-((minX+maxX)/2)*escala,offsetY=viewBoxHeight/2-((minY+maxY)/2)*escala;return{pontos,escala,offsetX,offsetY}};const desenharTrajetoria=elementos=>{if(!svgTrajetoria)return;if(elementos.length===0){svgTrajetoria.innerHTML='';if(mapaInfo.distancia)mapaInfo.distancia.textContent='Distância: 0m';if(mapaInfo.tempo)mapaInfo.tempo.textContent='Tempo: 0s';const caminhao=$('.trajetoria .truck-icon-large'),trofeu=$('.trajetoria .award-icon-large');if(caminhao){caminhao.style.left='15%';caminhao.style.bottom='10%'}if(trofeu){trofeu.style.left='85%';trofeu.style.bottom='10%'}return}const viewBoxWidth=400,viewBoxHeight=350,{pontos,escala,offsetX,offsetY}=calcularTrajetoria(elementos,viewBoxWidth,viewBoxHeight,30);let x=0,y=0,angulo=0;const pontoInicialX=offsetX,pontoInicialY=offsetY;let path=`M ${pontoInicialX} ${pontoInicialY}`,pontoFinal={x:pontoInicialX,y:pontoInicialY};elementos.forEach(el=>{if(el.tipo==='distancia'){const radianos=(angulo-90)*Math.PI/180;x+=parseFloat(el.valor)*Math.cos(radianos);y+=parseFloat(el.valor)*Math.sin(radianos);const novoX=x*escala+offsetX,novoY=y*escala+offsetY;path+=` L ${novoX} ${novoY}`;pontoFinal={x:novoX,y:novoY}}else if(el.tipo==='rotacao'){angulo+=parseFloat(el.valor)*(el.direcao==='direita'?1:-1);angulo=((angulo%360)+360)%360}});svgTrajetoria.innerHTML=`<path d="${path}" stroke="#313C41" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;const atualizarIcone=(icone,ponto)=>{if(icone){icone.style.left=`${(ponto.x/viewBoxWidth)*100}%`;icone.style.bottom=`${((viewBoxHeight-ponto.y)/viewBoxHeight)*100}%`;icone.style.transform='translate(-50%,50%)'}};atualizarIcone($('.trajetoria .truck-icon-large'),{x:pontoInicialX,y:pontoInicialY});atualizarIcone($('.trajetoria .award-icon-large'),pontoFinal);const stats=calcularEstatisticasRota(elementos);if(mapaInfo.distancia)mapaInfo.distancia.textContent=`Distância: ${stats.distanciaMetros}m`;if(mapaInfo.tempo)mapaInfo.tempo.textContent=`Tempo: ${Math.round(stats.distanciaTotal/50)}s`};const gerarSVGTrajetoria=elementos=>{const viewBoxWidth=316,viewBoxHeight=211;if(elementos.length===0)return{path:'<path d="" stroke="#313C41" stroke-width="2" fill="none"/>',pontoInicial:{x:158,y:180},pontoFinal:{x:158,y:180},viewBox:{width:viewBoxWidth,height:viewBoxHeight}};const{escala,offsetX,offsetY}=calcularTrajetoria(elementos,viewBoxWidth,viewBoxHeight,30);let x=0,y=0,angulo=0;const pontoInicialX=offsetX,pontoInicialY=offsetY;let path=`M ${pontoInicialX} ${pontoInicialY}`,pontoFinal={x:pontoInicialX,y:pontoInicialY};elementos.forEach(el=>{if(el.tipo==='distancia'){const radianos=(angulo-90)*Math.PI/180;x+=parseFloat(el.valor)*Math.cos(radianos);y+=parseFloat(el.valor)*Math.sin(radianos);const novoX=x*escala+offsetX,novoY=y*escala+offsetY;path+=` L ${novoX} ${novoY}`;pontoFinal={x:novoX,y:novoY}}else if(el.tipo==='rotacao'){angulo+=parseFloat(el.valor)*(el.direcao==='direita'?1:-1);angulo=((angulo%360)+360)%360}});return{path:`<path d="${path}" stroke="#313C41" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,pontoInicial:{x:pontoInicialX,y:pontoInicialY},pontoFinal,viewBox:{width:viewBoxWidth,height:viewBoxHeight}}};const calcularEstatisticasRota=elementos=>{let distanciaTotal=0,tempoEstimado=0;elementos.forEach(el=>{if(el.tipo==='distancia'){const dist=parseFloat(el.valor);distanciaTotal+=dist;tempoEstimado+=dist/50}else if(el.tipo==='rotacao')tempoEstimado+=parseFloat(el.valor)/90});return{distanciaTotal:Math.round(distanciaTotal),distanciaMetros:Math.round(distanciaTotal/10)/10,tempoMinutos:Math.round(tempoEstimado/60),velocidadeMedia:1.8,consumo:Math.round(distanciaTotal*.5)/10}};const renderizarRotasAnteriores=()=>{if(!rotasAnterioresContainer)return;if(rotas.length===0){rotasAnterioresContainer.innerHTML='<div style="padding:40px;text-align:center;color:#666;font-size:16px;grid-column:1/-1">Nenhuma rota</div>';atualizarEstatisticasGlobais();return}rotasAnterioresContainer.innerHTML=rotas.slice(-5).reverse().map((rota,index)=>{const stats=calcularEstatisticasRota(rota.elementos),svg=gerarSVGTrajetoria(rota.elementos),calcPos=(coord,size)=>(coord/size)*100,calcBottom=(y,height)=>((height-y)/height)*100;return`<div class="card-rota"><div class="rota-header"><p class="rota-name">Rota ${rotas.length-index}</p><p class="rota-distance">${stats.distanciaMetros}m</p></div><div class="rota-body"><p class="rota-time">${stats.tempoMinutos} min</p><p class="rota-vmedia">Vmédia: ${stats.velocidadeMedia}km/h</p><p class="rota-consumo">Consumo: ${stats.consumo} Wh</p><div class="mapa-container"><div class="mapa-placeholder"><svg class="map-route" width="100%" height="100%" viewBox="0 0 316 211" preserveAspectRatio="xMidYMid meet" fill="none">${svg.path}</svg><div class="truck-icon" style="left:${calcPos(svg.pontoInicial.x,svg.viewBox.width)}%;bottom:${calcBottom(svg.pontoInicial.y,svg.viewBox.height)}%;transform:translate(-50%,50%)">🚚</div><div class="award-icon" style="left:${calcPos(svg.pontoFinal.x,svg.viewBox.width)}%;bottom:${calcBottom(svg.pontoFinal.y,svg.viewBox.height)}%;transform:translate(-50%,50%)">🏆</div></div></div></div></div>`}).join('');atualizarEstatisticasGlobais()};const atualizarEstatisticasGlobais=()=>{const capacidadeBateria=10000;let consumoTotal=0,distanciaTotal=0;rotas.forEach(rota=>{const stats=calcularEstatisticasRota(rota.elementos);consumoTotal+=stats.consumo;distanciaTotal+=stats.distanciaMetros});const porcentagemGasta=Math.min((consumoTotal/capacidadeBateria)*100,100),soc=Math.max(100-porcentagemGasta,0),atualizar=(id,valor)=>{const el=$('#'+id);if(el)el.textContent=Math.round(valor)};atualizar('rotas-concluidas',rotas.length);atualizar('bateria-gasta',consumoTotal);atualizar('porcentagem-gasta',porcentagemGasta);atualizar('distancia-total',distanciaTotal);atualizar('bateria-soc',soc)};const adicionarElemento=(tipo,valor,direcao=null)=>{const elemento={tipo,valor,id:Date.now()};if(tipo==='rotacao')elemento.direcao=direcao;rotaAtual.elementos.push(elemento);renderizarElementos();desenharTrajetoria(rotaAtual.elementos)};if(btnAddDistancia)btnAddDistancia.addEventListener('click',()=>{const valor=inputDistancia.value.trim();if(valor&&parseFloat(valor)>0){adicionarElemento('distancia',valor);inputDistancia.value=''}else alert('Valor inválido')});if(btnAddRotacao)btnAddRotacao.addEventListener('click',()=>{const valor=inputRotacao.value.trim();if(valor&&parseFloat(valor)>0){adicionarElemento('rotacao',valor,selectDirecao.value);inputRotacao.value=''}else alert('Valor inválido')});const renderizarElementos=()=>{elementosContainer.innerHTML=rotaAtual.elementos.map((el,i)=>{const content=el.tipo==='distancia'?`<p class="elemento-label">Distância</p><p class="elemento-value">${el.valor} cm</p>`:`<p class="elemento-label">Girar ${el.valor}°</p><p class="elemento-value">${el.direcao==='direita'?'Direita ➡️':'Esquerda ⬅️'}</p>`;return`<div class="elemento-item ${el.tipo}" data-id="${el.id}"><div class="elemento-content">${content}</div><button class="btn-remover" data-id="${el.id}">-</button><span class="elemento-numero">${i+1}</span></div>`}).join('');$$('.btn-remover').forEach(btn=>btn.addEventListener('click',()=>{rotaAtual.elementos=rotaAtual.elementos.filter(el=>el.id!==parseInt(btn.dataset.id));renderizarElementos();desenharTrajetoria(rotaAtual.elementos)}))};
-if(btnConcluir)btnConcluir.addEventListener('click',()=>{if(rotaAtual.elementos.length===0)return alert('Adicione elementos');const rota={id:Date.now(),elementos:[...rotaAtual.elementos],dataHora:new Date().toISOString()};rotas.push(rota);renderizarRotasAnteriores();enviarRota(rota);rotaAtual.elementos=[];renderizarElementos();desenharTrajetoria([]);websocket.send('LED_ON');alert('Rota enviada! LED ligado')});
-if(btnLimparRota)btnLimparRota.addEventListener('click',()=>{if(confirm('Limpar rota?')){rotaAtual.elementos=[];renderizarElementos();desenharTrajetoria([])}});
-if(btnLimparRotas)btnLimparRotas.addEventListener('click',()=>{if(confirm('Limpar rotas?')){rotas=[];renderizarRotasAnteriores();websocket.send('LED_OFF');alert('Rotas limpas! LED apagado')}});
-const enviarRota=rota=>{const comandos=rota.elementos.map(el=>({tipo:el.tipo==='distancia'?'MOVE':'ROTATE',...(el.tipo==='distancia'?{valor:parseInt(el.valor),unidade:'cm'}:{angulo:parseInt(el.valor),direcao:el.direcao})}));console.log('Enviando:',comandos);websocket.send(JSON.stringify({tipo:'ROTA',comandos}))};
-renderizarRotasAnteriores();desenharTrajetoria([]);if(inputDistancia)inputDistancia.addEventListener('keypress',e=>e.key==='Enter'&&btnAddDistancia.click());if(inputRotacao)inputRotacao.addEventListener('keypress',e=>e.key==='Enter'&&btnAddRotacao.click())});
+// Cegoinha - Tela Principal
+document.addEventListener('DOMContentLoaded', () => {
+    let rotas = [];
+    let rotaAtual = { elementos: [] };
+
+    // Seletores
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+    
+    const btnAddDistancia = $('#btn-add-distancia');
+    const btnAddRotacao = $('#btn-add-rotacao');
+    const inputDistancia = $('#input-distancia');
+    const inputRotacao = $('#input-graus');
+    const selectDirecao = $('#select-direcao');
+    const btnConcluir = $('.btn-concluir');
+    const btnLimparRota = $('.enviar-rota .btn-limpar');
+    const btnLimparRotas = $('.btn-rotas-limpar');
+    const elementosContainer = $('.elementos-adicionados');
+    const rotasAnterioresContainer = $('.rotas-grid');
+    const svgTrajetoria = $('.map-route-large');
+    const mapaInfo = {
+        distancia: $$('.trajetoria-info')[0],
+        tempo: $$('.trajetoria-info')[1]
+    };
+
+    // Calcular trajetória com auto-escala
+    const calcularTrajetoria = (elementos, viewBoxWidth, viewBoxHeight, margem) => {
+        let pontos = [{x: 0, y: 0}];
+        let x = 0, y = 0, angulo = 0;
+        
+        elementos.forEach(el => {
+            if (el.tipo === 'distancia') {
+                const distancia = parseFloat(el.valor);
+                const radianos = (angulo - 90) * Math.PI / 180;
+                x += distancia * Math.cos(radianos);
+                y += distancia * Math.sin(radianos);
+                pontos.push({x, y});
+            } else if (el.tipo === 'rotacao') {
+                angulo += parseFloat(el.valor) * (el.direcao === 'direita' ? 1 : -1);
+                angulo = ((angulo % 360) + 360) % 360;
+            }
+        });
+        
+        const minX = Math.min(...pontos.map(p => p.x));
+        const maxX = Math.max(...pontos.map(p => p.x));
+        const minY = Math.min(...pontos.map(p => p.y));
+        const maxY = Math.max(...pontos.map(p => p.y));
+        const largura = maxX - minX;
+        const altura = maxY - minY;
+        
+        const escala = (largura < 1 && altura < 1) ? 10 : 
+            Math.min(
+                largura > 0 ? (viewBoxWidth - 2 * margem) / largura : 10,
+                altura > 0 ? (viewBoxHeight - 2 * margem) / altura : 10
+            );
+        
+        const offsetX = viewBoxWidth / 2 - ((minX + maxX) / 2) * escala;
+        const offsetY = viewBoxHeight / 2 - ((minY + maxY) / 2) * escala;
+        
+        return { pontos, escala, offsetX, offsetY };
+    };
+
+    // Desenhar trajetória no mapa principal
+    const desenharTrajetoria = (elementos) => {
+        if (!svgTrajetoria) return;
+        
+        if (elementos.length === 0) {
+            svgTrajetoria.innerHTML = '';
+            if (mapaInfo.distancia) mapaInfo.distancia.textContent = 'Distância do percurso: 0m';
+            if (mapaInfo.tempo) mapaInfo.tempo.textContent = 'Tempo estimado do percurso: 0s';
+            
+            const caminhao = $('.trajetoria .truck-icon-large');
+            const trofeu = $('.trajetoria .award-icon-large');
+            if (caminhao) { caminhao.style.left = '15%'; caminhao.style.bottom = '10%'; }
+            if (trofeu) { trofeu.style.left = '85%'; trofeu.style.bottom = '10%'; }
+            return;
+        }
+        
+        const viewBoxWidth = 400, viewBoxHeight = 350;
+        const { pontos, escala, offsetX, offsetY } = calcularTrajetoria(elementos, viewBoxWidth, viewBoxHeight, 30);
+        
+        let x = 0, y = 0, angulo = 0;
+        const pontoInicialX = offsetX, pontoInicialY = offsetY;
+        let path = `M ${pontoInicialX} ${pontoInicialY}`;
+        let pontoFinal = {x: pontoInicialX, y: pontoInicialY};
+        
+        elementos.forEach(el => {
+            if (el.tipo === 'distancia') {
+                const radianos = (angulo - 90) * Math.PI / 180;
+                x += parseFloat(el.valor) * Math.cos(radianos);
+                y += parseFloat(el.valor) * Math.sin(radianos);
+                const novoX = x * escala + offsetX;
+                const novoY = y * escala + offsetY;
+                path += ` L ${novoX} ${novoY}`;
+                pontoFinal = {x: novoX, y: novoY};
+            } else if (el.tipo === 'rotacao') {
+                angulo += parseFloat(el.valor) * (el.direcao === 'direita' ? 1 : -1);
+                angulo = ((angulo % 360) + 360) % 360;
+            }
+        });
+        
+        svgTrajetoria.innerHTML = `<path d="${path}" stroke="#313C41" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+        
+        const atualizarIcone = (icone, ponto) => {
+            if (icone) {
+                icone.style.left = `${(ponto.x / viewBoxWidth) * 100}%`;
+                icone.style.bottom = `${((viewBoxHeight - ponto.y) / viewBoxHeight) * 100}%`;
+                icone.style.transform = 'translate(-50%, 50%)';
+            }
+        };
+        
+        atualizarIcone($('.trajetoria .truck-icon-large'), {x: pontoInicialX, y: pontoInicialY});
+        atualizarIcone($('.trajetoria .award-icon-large'), pontoFinal);
+        
+        const stats = calcularEstatisticasRota(elementos);
+        if (mapaInfo.distancia) mapaInfo.distancia.textContent = `Distância do percurso: ${stats.distanciaMetros}m`;
+        if (mapaInfo.tempo) mapaInfo.tempo.textContent = `Tempo estimado do percurso: ${Math.round(stats.distanciaTotal / 50)}s`;
+    };
+
+    // Gerar SVG para rotas anteriores
+    const gerarSVGTrajetoria = (elementos) => {
+        const viewBoxWidth = 316, viewBoxHeight = 211;
+        if (elementos.length === 0) {
+            return {
+                path: '<path d="" stroke="#313C41" stroke-width="2" fill="none"/>',
+                pontoInicial: {x: 158, y: 180},
+                pontoFinal: {x: 158, y: 180},
+                viewBox: {width: viewBoxWidth, height: viewBoxHeight}
+            };
+        }
+        
+        const { escala, offsetX, offsetY } = calcularTrajetoria(elementos, viewBoxWidth, viewBoxHeight, 30);
+        let x = 0, y = 0, angulo = 0;
+        const pontoInicialX = offsetX, pontoInicialY = offsetY;
+        let path = `M ${pontoInicialX} ${pontoInicialY}`;
+        let pontoFinal = {x: pontoInicialX, y: pontoInicialY};
+        
+        elementos.forEach(el => {
+            if (el.tipo === 'distancia') {
+                const radianos = (angulo - 90) * Math.PI / 180;
+                x += parseFloat(el.valor) * Math.cos(radianos);
+                y += parseFloat(el.valor) * Math.sin(radianos);
+                const novoX = x * escala + offsetX;
+                const novoY = y * escala + offsetY;
+                path += ` L ${novoX} ${novoY}`;
+                pontoFinal = {x: novoX, y: novoY};
+            } else if (el.tipo === 'rotacao') {
+                angulo += parseFloat(el.valor) * (el.direcao === 'direita' ? 1 : -1);
+                angulo = ((angulo % 360) + 360) % 360;
+            }
+        });
+        
+        return {
+            path: `<path d="${path}" stroke="#313C41" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+            pontoInicial: {x: pontoInicialX, y: pontoInicialY},
+            pontoFinal,
+            viewBox: {width: viewBoxWidth, height: viewBoxHeight}
+        };
+    };
+    // Calcular estatísticas da rota
+    const calcularEstatisticasRota = (elementos) => {
+        let distanciaTotal = 0, tempoEstimado = 0;
+        elementos.forEach(el => {
+            if (el.tipo === 'distancia') {
+                const dist = parseFloat(el.valor);
+                distanciaTotal += dist;
+                tempoEstimado += dist / 50; // 1.8 km/h = 50 cm/s
+            } else if (el.tipo === 'rotacao') {
+                tempoEstimado += parseFloat(el.valor) / 90; // 1s por 90°
+            }
+        });
+        
+        return {
+            distanciaTotal: Math.round(distanciaTotal),
+            distanciaMetros: Math.round(distanciaTotal / 10) / 10,
+            tempoMinutos: Math.round(tempoEstimado / 60),
+            velocidadeMedia: 1.8,
+            consumo: Math.round(distanciaTotal * 0.5) / 10 // 50 Wh/m
+        };
+    };
+
+    // Renderizar rotas anteriores
+    const renderizarRotasAnteriores = () => {
+        if (!rotasAnterioresContainer) return;
+        
+        if (rotas.length === 0) {
+            rotasAnterioresContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: #666; font-size: 20px; grid-column: 1 / -1;">Nenhuma rota registrada ainda</div>';
+            atualizarEstatisticasGlobais();
+            return;
+        }
+        
+        rotasAnterioresContainer.innerHTML = rotas.slice(-5).reverse().map((rota, index) => {
+            const stats = calcularEstatisticasRota(rota.elementos);
+            const svg = gerarSVGTrajetoria(rota.elementos);
+            const calcPos = (coord, size) => (coord / size) * 100;
+            const calcBottom = (y, height) => ((height - y) / height) * 100;
+            
+            return `
+                <div class="card-rota" data-rota-id="${rota.id}">
+                    <div class="rota-header">
+                        <p class="rota-name">Rota ${rotas.length - index}</p>
+                        <p class="rota-distance">${stats.distanciaMetros}m</p>
+                    </div>
+                    <div class="rota-body">
+                        <p class="rota-time">${stats.tempoMinutos} min</p>
+                        <p class="rota-vmedia">Vmédia: ${stats.velocidadeMedia}km/h</p>
+                        <p class="rota-consumo">Consumo de ${stats.consumo} Wh de bateria</p>
+                        <div class="mapa-container">
+                            <div class="mapa-placeholder">
+                                <svg class="map-route" width="100%" height="100%" viewBox="0 0 316 211" preserveAspectRatio="xMidYMid meet" fill="none">${svg.path}</svg>
+                                <div class="truck-icon" style="left:${calcPos(svg.pontoInicial.x, svg.viewBox.width)}%; bottom:${calcBottom(svg.pontoInicial.y, svg.viewBox.height)}%; transform:translate(-50%,50%)">🚚</div>
+                                <div class="award-icon" style="left:${calcPos(svg.pontoFinal.x, svg.viewBox.width)}%; bottom:${calcBottom(svg.pontoFinal.y, svg.viewBox.height)}%; transform:translate(-50%,50%)">🏆</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        atualizarEstatisticasGlobais();
+    };
+
+    // Atualizar estatísticas globais (SOC)
+    const atualizarEstatisticasGlobais = () => {
+        const capacidadeBateria = 10000;
+        let consumoTotal = 0, distanciaTotal = 0;
+        
+        rotas.forEach(rota => {
+            const stats = calcularEstatisticasRota(rota.elementos);
+            consumoTotal += stats.consumo;
+            distanciaTotal += stats.distanciaMetros;
+        });
+        
+        const porcentagemGasta = Math.min((consumoTotal / capacidadeBateria) * 100, 100);
+        const soc = Math.max(100 - porcentagemGasta, 0);
+        
+        const atualizar = (id, valor) => {
+            const el = $('#' + id);
+            if (el) el.textContent = Math.round(valor);
+        };
+        
+        atualizar('rotas-concluidas', rotas.length);
+        atualizar('bateria-gasta', consumoTotal);
+        atualizar('porcentagem-gasta', porcentagemGasta);
+        atualizar('distancia-total', distanciaTotal);
+        atualizar('bateria-soc', soc);
+    };
+
+    // Adicionar elemento
+    const adicionarElemento = (tipo, valor, direcao = null) => {
+        const elemento = { tipo, valor, id: Date.now() };
+        if (tipo === 'rotacao') elemento.direcao = direcao;
+        rotaAtual.elementos.push(elemento);
+        renderizarElementos();
+        desenharTrajetoria(rotaAtual.elementos);
+    };
+
+    // Event listeners - Adicionar
+    if (btnAddDistancia) {
+        btnAddDistancia.addEventListener('click', () => {
+            const valor = inputDistancia.value.trim();
+            if (valor && parseFloat(valor) > 0) {
+                adicionarElemento('distancia', valor);
+                inputDistancia.value = '';
+            } else alert('Insira um valor válido para a distância');
+        });
+    }
+
+    if (btnAddRotacao) {
+        btnAddRotacao.addEventListener('click', () => {
+            const valor = inputRotacao.value.trim();
+            if (valor && parseFloat(valor) > 0) {
+                adicionarElemento('rotacao', valor, selectDirecao.value);
+                inputRotacao.value = '';
+            } else alert('Insira um valor válido para a rotação');
+        });
+    }
+
+    // Renderizar elementos
+    const renderizarElementos = () => {
+        elementosContainer.innerHTML = rotaAtual.elementos.map((el, i) => {
+            const content = el.tipo === 'distancia' 
+                ? `<p class="elemento-label">Distância</p><p class="elemento-value">${el.valor} cm</p>`
+                : `<p class="elemento-label">Girar ${el.valor}°</p><p class="elemento-value">Direção: ${el.direcao === 'direita' ? 'Direita ➡️' : 'Esquerda ⬅️'}</p>`;
+            
+            return `<div class="elemento-item ${el.tipo}" data-id="${el.id}">
+                <div class="elemento-content">${content}</div>
+                <button class="btn-remover" data-id="${el.id}">-</button>
+                <span class="elemento-numero">${i + 1}</span>
+            </div>`;
+        }).join('');
+
+        $$('.btn-remover').forEach(btn => {
+            btn.addEventListener('click', () => {
+                rotaAtual.elementos = rotaAtual.elementos.filter(el => el.id !== parseInt(btn.dataset.id));
+                renderizarElementos();
+                desenharTrajetoria(rotaAtual.elementos);
+            });
+        });
+    };
+
+    // Botões de ação
+    if (btnConcluir) {
+        btnConcluir.addEventListener('click', () => {
+            if (rotaAtual.elementos.length === 0) return alert('Adicione pelo menos um elemento à rota');
+            
+            const rota = { id: Date.now(), elementos: [...rotaAtual.elementos], dataHora: new Date().toISOString() };
+            rotas.push(rota);
+            renderizarRotasAnteriores();
+            enviarRota(rota);
+            rotaAtual.elementos = [];
+            renderizarElementos();
+            desenharTrajetoria([]);
+            alert('Rota enviada com sucesso!');
+        });
+    }
+
+    if (btnLimparRota) {
+        btnLimparRota.addEventListener('click', () => {
+            if (confirm('Deseja limpar todos os elementos da rota atual?')) {
+                rotaAtual.elementos = [];
+                renderizarElementos();
+                desenharTrajetoria([]);
+            }
+        });
+    }
+
+    if (btnLimparRotas) {
+        btnLimparRotas.addEventListener('click', () => {
+            if (confirm('Deseja limpar todas as rotas anteriores?')) {
+                rotas = [];
+                renderizarRotasAnteriores();
+                alert('Rotas anteriores limpas!');
+            }
+        });
+    }
+
+    // Enviar rota (placeholder para WebSocket)
+    const enviarRota = (rota) => {
+        const comandos = rota.elementos.map(el => ({
+            tipo: el.tipo === 'distancia' ? 'MOVE' : 'ROTATE',
+            ...(el.tipo === 'distancia' ? {valor: parseInt(el.valor), unidade: 'cm'} : {angulo: parseInt(el.valor), direcao: el.direcao})
+        }));
+        console.log('Enviando:', comandos);
+        // ws.send(JSON.stringify({ comandos }));
+    };
+
+    // Inicialização
+    renderizarRotasAnteriores();
+    desenharTrajetoria([]);
+
+    // Enter para adicionar
+    if (inputDistancia) inputDistancia.addEventListener('keypress', e => e.key === 'Enter' && btnAddDistancia.click());
+    if (inputRotacao) inputRotacao.addEventListener('keypress', e => e.key === 'Enter' && btnAddRotacao.click());
+
+    // WebSocket (descomentar quando implementar)
+    // const ws = new WebSocket('ws://IP_ESP32:81');
+    // ws.onmessage = e => { const data = JSON.parse(e.data); /* atualizar UI */ };
+});
 </script>
 </body>
 </html>
