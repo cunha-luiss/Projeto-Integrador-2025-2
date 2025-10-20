@@ -1,33 +1,30 @@
-/*
-  Cegoinha - Sistema de controle integrado com WebSocket
-  ESP32 com interface web para controle de rotas
-*/
-
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
 
-// Credenciais WiFi
+String exString;
+
 const char* ssid = "cegoinha";
 const char* password = "cegoinha123";
 
-// Estado do LED
-bool ledState = 0;
-const int ledPin = 2;
+bool ledState1 = 0;
+bool ledState2 = 0;
+const int ledPin1 = 2;
+const int ledPin2 = 1;
 
-// Servidor e WebSocket
+// Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
-// HTML do Cegoinha (minificado e otimizado para ESP32)
-const char index_html[] PROGMEM = R"rawliteral(<!DOCTYPE html>
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cegoinha</title>
-<style>
-/* Reset and Base */
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cegoinha - Tela Principal</title>
+    <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -39,7 +36,7 @@ body {
 }
 
 .main-container {
-    width: 100%;
+    width: 100%%;
     min-height: 100vh;
     padding: 20px;
     max-width: 1400px;
@@ -55,7 +52,7 @@ body {
 }
 
 .divider {
-    width: calc(100% + 40px);
+    width: calc(100%% + 40px);
     height: 5px;
     background: #313C41;
     margin: 20px -20px;
@@ -130,7 +127,7 @@ body {
 .rota-consumo { margin-bottom: 15px; }
 
 .mapa-container {
-    width: 100%;
+    width: 100%%;
     height: 320px;
     margin-top: 10px;
 }
@@ -138,8 +135,8 @@ body {
 .mapa-placeholder, .mapa-grande {
     background: #EC8A8A;
     border-radius: 15px;
-    width: 100%;
-    height: 100%;
+    width: 100%%;
+    height: 100%%;
     position: relative;
     display: flex;
     align-items: center;
@@ -158,8 +155,8 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100%%;
+    height: 100%%;
     z-index: 1;
     pointer-events: none;
 }
@@ -309,8 +306,8 @@ body {
     font-size: 22px;
     position: absolute;
     left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 50%%;
+    transform: translateY(-50%%);
 }
 
 .elemento-numero {
@@ -489,7 +486,7 @@ button:active { transform: scale(0.98); }
     }
     
     .card-rota {
-        width: 100%;
+        width: 100%%;
         max-width: 491px;
     }
     
@@ -498,12 +495,12 @@ button:active { transform: scale(0.98); }
     }
     
     .adicionar-card {
-        width: 100% !important;
+        width: 100%% !important;
         max-width: 399px;
     }
     
     .elemento-item {
-        width: 100% !important;
+        width: 100%% !important;
         max-width: 399px;
     }
     
@@ -522,86 +519,148 @@ button:active { transform: scale(0.98); }
         margin-top: 10px;
     }
 }
-</style>
+
+    </style>
 </head>
 <body>
-<div class="main-container">
-<div class="header"><p class="title">Cegoinha 🕊️</p></div>
-<div class="divider"></div>
-<section class="section rotas-anteriores">
-<div class="section-header"><p class="section-title">Rotas Anteriores</p></div>
-<div class="rotas-grid"></div>
-<button class="btn-limpar btn-rotas-limpar">Limpar</button>
-</section>
-<div class="divider"></div>
-<section class="section consumo-carga">
-<p class="section-title">Consumo desde a última carga</p>
-<ul class="consumo-list">
-<li><span id="rotas-concluidas">0</span> rotas concluídas</li>
-<li><span id="bateria-gasta">0</span> Wh gastos (<span id="porcentagem-gasta">0</span>%)</li>
-<li><span id="distancia-total">0</span> cm andados</li>
-</ul>
-</section>
-<div class="divider"></div>
-<section class="section status-carrinho">
-<p class="section-title">Status carrinho</p>
-<div class="status-grid">
-<div class="status-card"><div class="status-header">Consumo motor 1</div><div class="status-value">0 W</div></div>
-<div class="status-card"><div class="status-header">Consumo motor 2</div><div class="status-value">0 W</div></div>
-<div class="status-card"><div class="status-header">Bateria restante</div><div class="status-value"><span id="bateria-soc">100</span>%</div></div>
-</div>
-</section>
-<div class="divider"></div>
-<div class="main-content">
-<section class="section enviar-rota">
-<p class="section-title">Enviar rota</p>
-<div class="elementos-adicionados"></div>
-<div class="adicionar-elementos">
-<div class="adicionar-card rotacao-add">
-<p class="add-label-top">Direção</p>
-<p class="add-label-left">Girar X°</p>
-<input type="number" class="add-input add-input-graus" id="input-graus" placeholder="90" min="0" max="360">
-<select class="add-select-direcao" id="select-direcao">
-<option value="direita">Direita ➡️</option>
-<option value="esquerda">Esquerda ⬅️</option>
-</select>
-<button class="btn-add" id="btn-add-rotacao">+</button>
-</div>
-<div class="adicionar-card distancia-add">
-<p class="add-label">Distância</p>
-<input type="number" class="add-input" id="input-distancia" placeholder="10" min="0">
-<button class="btn-add" id="btn-add-distancia">+</button>
-</div>
-</div>
-<div class="acoes">
-<button class="btn-concluir">Concluir</button>
-<button class="btn-limpar">Limpar</button>
-</div>
-</section>
-<section class="section trajetoria">
-<p class="section-title">Trajetória</p>
-<div class="trajetoria-card">
-<p class="trajetoria-info">Distância: 0m</p>
-<p class="trajetoria-info">Tempo: 0s</p>
-<div class="mapa-grande">
-<svg class="map-route-large" width="100%" height="100%" viewBox="0 0 400 350" preserveAspectRatio="xMidYMid meet" fill="none"></svg>
-<div class="truck-icon-large">🚚</div>
-<div class="award-icon-large">🏆</div>
-</div>
-</div>
-<div class="status-percurso-section">
-<p class="section-title">Status percurso</p>
-<div class="status-percurso-grid">
-<div class="status-percurso-card"><div class="status-header">Velocidade</div><div class="status-value">4 km/h</div></div>
-<div class="status-percurso-card"><div class="status-header">ETA</div><div class="status-value">10 min</div></div>
-<div class="status-percurso-card"><div class="status-header">Consumo</div><div class="status-value">5 Wh</div></div>
-<div class="status-percurso-card"><div class="status-header">ΔT</div><div class="status-value">5 min</div></div>
-</div>
-</div>
-</section>
-</div>
-</div>
-<script>
+    <div class="main-container" data-name="Tela principal" data-node-id="64:174">
+        <!-- Header -->
+        <div class="header">
+            <p class="title">Cegoinha 🕊️</p>
+        </div>
+        <div class="divider divider-top"></div>
+
+        <!-- Rotas Anteriores Section -->
+        <section class="section rotas-anteriores" data-node-id="82:416">
+            <div class="section-header">
+                <p class="section-title">Rotas Anteriores</p>
+            </div>
+            
+            <div class="rotas-grid">
+                <!-- Cards de rotas serão gerados dinamicamente pelo JavaScript -->
+            </div>
+
+            <button class="btn-limpar btn-rotas-limpar">Limpar</button>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Consumo desde a última carga -->
+        <section class="section consumo-carga" data-node-id="82:417">
+            <p class="section-title">Consumo desde a última carga</p>
+            <ul class="consumo-list">
+                <li><span id="rotas-concluidas">0</span> rotas concluídas</li>
+                <li><span id="bateria-gasta">0</span> Wh de bateria gastos (<span id="porcentagem-gasta">0</span>%% da bateria)</li>
+                <li><span id="distancia-total">0</span> cm andados</li>
+            </ul>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Status Carrinho -->
+        <section class="section status-carrinho" data-node-id="179:434">
+            <p class="section-title">Status carrinho</p>
+            <div class="status-grid">
+                <div class="status-card" data-node-id="81:376">
+                    <div class="status-header">Consumo motor 1</div>
+                    <div class="status-value">0 W</div>
+                </div>
+                <div class="status-card" data-node-id="179:435">
+                    <div class="status-header">Consumo motor 2</div>
+                    <div class="status-value">0 W</div>
+                </div>
+                <div class="status-card" data-node-id="179:436">
+                    <div class="status-header">Bateria restante</div>
+                    <div class="status-value"><span id="bateria-soc">100</span>%%</div>
+                </div>
+            </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Main Content Grid -->
+        <div class="main-content">
+            <!-- Enviar Rota Section -->
+            <section class="section enviar-rota" data-node-id="82:418">
+                <p class="section-title">Enviar rota</p>
+                
+                <!-- Elementos adicionados -->
+                <div class="elementos-adicionados">
+                    <!-- Elementos serão gerados dinamicamente pelo JavaScript -->
+                </div>
+
+                <!-- Adicionar elementos -->
+                <div class="adicionar-elementos">
+                    <div class="adicionar-card rotacao-add">
+                        <p class="add-label-top">Direção</p>
+                        <p class="add-label-left">Girar X°</p>
+                        <input type="number" class="add-input add-input-graus" id="input-graus" placeholder="90" min="0" max="360">
+                        <select class="add-select-direcao" id="select-direcao">
+                            <option value="direita">Direita ➡️</option>
+                            <option value="esquerda">Esquerda ⬅️</option>
+                        </select>
+                        <button class="btn-add">+</button>
+                    </div>
+
+                    <div class="adicionar-card distancia-add">
+                        <p class="add-label">Distância</p>
+                        <input type="number" class="add-input" id="input-distancia" placeholder="10" min="0">
+                        <button class="btn-add">+</button>
+                    </div>
+                </div>
+
+                <!-- Botões de ação -->
+                <div class="acoes">
+                    <button class="btn-concluir">Concluir</button>
+                    <button class="btn-limpar">Limpar</button>
+                </div>
+            </section>
+
+            <!-- Trajetória Section -->
+            <section class="section trajetoria" data-node-id="64:546">
+                <p class="section-title">Trajetória</p>
+                
+                <div class="trajetoria-card">
+                    <p class="trajetoria-info">Distância do percurso: 90m</p>
+                    <p class="trajetoria-info">Tempo estimado do percurso: 60s</p>
+                    
+                    <div class="mapa-grande">
+                        <svg class="map-route-large" width="100%%" height="100%%" viewBox="0 0 400 350" preserveAspectRatio="xMidYMid meet" fill="none">
+                            <!-- O caminho será desenhado aqui dinamicamente -->
+                        </svg>
+                        <div class="truck-icon-large">🚚</div>
+                        <div class="award-icon-large">🏆</div>
+                    </div>
+                </div>
+
+                <!-- Status Percurso -->
+                <div class="status-percurso-section" data-node-id="64:612">
+                    <p class="section-title" style="margin-top: 40px;">Status percurso</p>
+                    <div class="status-percurso-grid">
+                        <div class="status-percurso-card">
+                            <div class="status-header">Velocidade</div>
+                            <div class="status-value">4 km/h</div>
+                        </div>
+                        <div class="status-percurso-card">
+                            <div class="status-header">ETA</div>
+                            <div class="status-value">10 min</div>
+                        </div>
+                        <div class="status-percurso-card">
+                            <div class="status-header">Consumo</div>
+                            <div class="status-value">5 Wh</div>
+                        </div>
+                        <div class="status-percurso-card">
+                            <div class="status-header">ΔT</div>
+                            <div class="status-value">5 min 3 seg</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+
 // Cegoinha - Tela Principal
 document.addEventListener('DOMContentLoaded', () => {
     let rotas = [];
@@ -611,8 +670,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const $ = (sel) => document.querySelector(sel);
     const $$ = (sel) => document.querySelectorAll(sel);
     
-    const btnAddDistancia = $('#btn-add-distancia');
-    const btnAddRotacao = $('#btn-add-rotacao');
+    const btnAddDistancia = $('.distancia-add .btn-add');
+    const btnAddRotacao = $('.rotacao-add .btn-add');
     const inputDistancia = $('#input-distancia');
     const inputRotacao = $('#input-graus');
     const selectDirecao = $('#select-direcao');
@@ -641,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pontos.push({x, y});
             } else if (el.tipo === 'rotacao') {
                 angulo += parseFloat(el.valor) * (el.direcao === 'direita' ? 1 : -1);
-                angulo = ((angulo % 360) + 360) % 360;
+                angulo = ((angulo %% 360) + 360) %% 360;
             }
         });
         
@@ -675,8 +734,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const caminhao = $('.trajetoria .truck-icon-large');
             const trofeu = $('.trajetoria .award-icon-large');
-            if (caminhao) { caminhao.style.left = '15%'; caminhao.style.bottom = '10%'; }
-            if (trofeu) { trofeu.style.left = '85%'; trofeu.style.bottom = '10%'; }
+            if (caminhao) { caminhao.style.left = '15%%'; caminhao.style.bottom = '10%%'; }
+            if (trofeu) { trofeu.style.left = '85%%'; trofeu.style.bottom = '10%%'; }
             return;
         }
         
@@ -699,7 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pontoFinal = {x: novoX, y: novoY};
             } else if (el.tipo === 'rotacao') {
                 angulo += parseFloat(el.valor) * (el.direcao === 'direita' ? 1 : -1);
-                angulo = ((angulo % 360) + 360) % 360;
+                angulo = ((angulo %% 360) + 360) %% 360;
             }
         });
         
@@ -707,9 +766,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const atualizarIcone = (icone, ponto) => {
             if (icone) {
-                icone.style.left = `${(ponto.x / viewBoxWidth) * 100}%`;
-                icone.style.bottom = `${((viewBoxHeight - ponto.y) / viewBoxHeight) * 100}%`;
-                icone.style.transform = 'translate(-50%, 50%)';
+                icone.style.left = `${(ponto.x / viewBoxWidth) * 100}%%`;
+                icone.style.bottom = `${((viewBoxHeight - ponto.y) / viewBoxHeight) * 100}%%`;
+                icone.style.transform = 'translate(-50%%, 50%%)';
             }
         };
         
@@ -750,7 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pontoFinal = {x: novoX, y: novoY};
             } else if (el.tipo === 'rotacao') {
                 angulo += parseFloat(el.valor) * (el.direcao === 'direita' ? 1 : -1);
-                angulo = ((angulo % 360) + 360) % 360;
+                angulo = ((angulo %% 360) + 360) %% 360;
             }
         });
         
@@ -811,9 +870,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="rota-consumo">Consumo de ${stats.consumo} Wh de bateria</p>
                         <div class="mapa-container">
                             <div class="mapa-placeholder">
-                                <svg class="map-route" width="100%" height="100%" viewBox="0 0 316 211" preserveAspectRatio="xMidYMid meet" fill="none">${svg.path}</svg>
-                                <div class="truck-icon" style="left:${calcPos(svg.pontoInicial.x, svg.viewBox.width)}%; bottom:${calcBottom(svg.pontoInicial.y, svg.viewBox.height)}%; transform:translate(-50%,50%)">🚚</div>
-                                <div class="award-icon" style="left:${calcPos(svg.pontoFinal.x, svg.viewBox.width)}%; bottom:${calcBottom(svg.pontoFinal.y, svg.viewBox.height)}%; transform:translate(-50%,50%)">🏆</div>
+                                <svg class="map-route" width="100%%" height="100%%" viewBox="0 0 316 211" preserveAspectRatio="xMidYMid meet" fill="none">${svg.path}</svg>
+                                <div class="truck-icon" style="left:${calcPos(svg.pontoInicial.x, svg.viewBox.width)}%%; bottom:${calcBottom(svg.pontoInicial.y, svg.viewBox.height)}%%; transform:translate(-50%%,50%%)">🚚</div>
+                                <div class="award-icon" style="left:${calcPos(svg.pontoFinal.x, svg.viewBox.width)}%%; bottom:${calcBottom(svg.pontoFinal.y, svg.viewBox.height)}%%; transform:translate(-50%%,50%%)">🏆</div>
                             </div>
                         </div>
                     </div>
@@ -908,7 +967,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnConcluir.addEventListener('click', () => {
             if (rotaAtual.elementos.length === 0) return alert('Adicione pelo menos um elemento à rota');
             
-            const rota = { id: Date.now(), elementos: [...rotaAtual.elementos], dataHora: new Date().toISOString() };
+            const rota = {id: Date.now(), elementos: [...rotaAtual.elementos], dataHora: new Date().toISOString() };
             rotas.push(rota);
             renderizarRotasAnteriores();
             enviarRota(rota);
@@ -939,16 +998,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Enviar rota (placeholder para WebSocket)
-    const enviarRota = (rota) => {
-        const comandos = rota.elementos.map(el => ({
-            tipo: el.tipo === 'distancia' ? 'MOVE' : 'ROTATE',
-            ...(el.tipo === 'distancia' ? {valor: parseInt(el.valor), unidade: 'cm'} : {angulo: parseInt(el.valor), direcao: el.direcao})
-        }));
-        console.log('Enviando:', comandos);
-        // ws.send(JSON.stringify({ comandos }));
-    };
-
     // Inicialização
     renderizarRotasAnteriores();
     desenharTrajetoria([]);
@@ -957,112 +1006,145 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inputDistancia) inputDistancia.addEventListener('keypress', e => e.key === 'Enter' && btnAddDistancia.click());
     if (inputRotacao) inputRotacao.addEventListener('keypress', e => e.key === 'Enter' && btnAddRotacao.click());
 
-    // WebSocket (descomentar quando implementar)
-    // const ws = new WebSocket('ws://IP_ESP32:81');
-    // ws.onmessage = e => { const data = JSON.parse(e.data); /* atualizar UI */ };
+    // WebSocket
+    var gateway = `ws://${window.location.hostname}/ws`;
+    var websocket;
+    window.addEventListener('load', onLoad);
+    function initWebSocket() {
+        console.log('Trying to open a WebSocket connection...');
+        websocket = new WebSocket(gateway);
+        websocket.onopen    = onOpen;
+        websocket.onclose   = onClose;
+        websocket.onmessage = onMessage; // <-- atualizar isso aqui (falar o que fazer qndo receber mensagem)
+    }
+    function onOpen(event) {
+        console.log('Connection opened');
+    }
+    function onClose(event) {
+        console.log('Connection closed');
+        setTimeout(initWebSocket, 2000);
+    }
+    function onMessage(event) {
+        var state;
+        if (event.data == "1"){
+        state = "ON";
+        }
+        else{
+        state = "OFF";
+        }
+        document.getElementById('state').innerHTML = state;
+    }
+        // Enviar rota (placeholder para WebSocket)
+    const enviarRota = (rota) => {
+        const comandos = rota.elementos.map(el => ({
+            tipo: el.tipo === 'distancia' ? 'MOVE' : 'ROTATE',
+            ...(el.tipo === 'distancia' ? {valor: parseInt(el.valor), unidade: 'cm'} : {angulo: parseInt(el.valor), direcao: el.direcao})
+        }));
+        console.log('Enviando:', comandos);
+        websocket.send(JSON.stringify({ channel: "ENVIAR_ROTAS", value: comandos }));
+    };
+
+    function onLoad(event) {
+        initWebSocket();
+        initButton();
+    }
+    function toggle(id){
+        websocket.send({'message':'toggle', 'id': id});
+    }
 });
-</script>
+    </script>
 </body>
 </html>
 )rawliteral";
 
-void notifyClients() {
-  ws.textAll(String(ledState));
-}
-
-void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
-  AwsFrameInfo *info = (AwsFrameInfo*)arg;
-  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-    data[len] = 0;
-    String message = String((char*)data);
-    
-    Serial.println("Mensagem recebida: " + message);
-    
-    // Comando para ligar LED (botão Concluir)
-    if (message == "LED_ON") {
-      ledState = 1;
-      notifyClients();
-      Serial.println("LED ligado pelo botão Concluir");
-    }
-    // Comando para desligar LED (botão Limpar Rotas)
-    else if (message == "LED_OFF") {
-      ledState = 0;
-      notifyClients();
-      Serial.println("LED apagado pelo botão Limpar Rotas");
-    }
-    // Comando de toggle original
-    else if (message == "toggle") {
-      ledState = !ledState;
-      notifyClients();
-      Serial.println("LED toggle");
-    }
-    // Comandos de rota (JSON)
-    else if (message.startsWith("{")) {
-      Serial.println("Comando de rota recebido:");
-      Serial.println(message);
-      // Aqui você pode processar os comandos de movimento do robô
-      // Exemplo de parsing e execução dos comandos
-    }
-  }
-}
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
-             void *arg, uint8_t *data, size_t len) {
+  void *arg, uint8_t *data, size_t len) {
   switch (type) {
-    case WS_EVT_CONNECT:
-      Serial.printf("WebSocket cliente #%u conectado de %s\n", client->id(), client->remoteIP().toString().c_str());
-      // Envia estado atual do LED para o novo cliente
-      client->text(String(ledState));
+    case WS_EVT_CONNECT: //executado quando cliente novo entra
+      Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
       break;
-    case WS_EVT_DISCONNECT:
-      Serial.printf("WebSocket cliente #%u desconectado\n", client->id());
+    case WS_EVT_DISCONNECT: //executado quando cliente desconecta
+      Serial.printf("WebSocket client #%u disconnected\n", client->id());
       break;
-    case WS_EVT_DATA:
-      handleWebSocketMessage(arg, data, len);
+    case WS_EVT_DATA: //executado quando chega mensagem
+      mensagemRecebida(arg, data, len);
       break;
     case WS_EVT_PONG:
     case WS_EVT_ERROR:
       break;
   }
 }
-
 void initWebSocket() {
   ws.onEvent(onEvent);
   server.addHandler(&ws);
 }
 
+
+void mensagemRecebida(void *metadados, uint8_t *mensagem, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo*)metadados;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) { //verifica se recebe só texto
+    
+    StaticJsonDocument<200> doc;
+    DeserializationError error = deserializeJson(doc, mensagem, len);
+
+    if (error) {
+      Serial.print("Falha ao ler JSON: ");
+      Serial.println(error.c_str());
+      return; // Para a execução se o JSON for inválido
+    }
+    
+    if (!doc.containsKey("channel")) {
+      Serial.println("JSON recebido não contém a chave 'channel'.");
+      return;
+    }
+
+    const char* channel = doc["channel"]; // Pega o valor da chave "channel"
+    float value = doc["value"];          // Pega o valor da chave "value"
+
+    Serial.printf("Canal recebido: %s\n", channel);
+    Serial.printf("Valor recebido: %f\n", value);
+  }
+}
+
+
+String setupVariables(const String& var){
+  if (var == "VARIAVEL1"){ //Ai coloa %VARIAVEL1% no HTML, que ai vai ser substituida
+    return "Valor da variável";
+  }
+  return String(); //para não crashar se nao existir a variável
+}
+void notifyClients(String value){
+ws.textAll(String(value));
+}
+
+
 void setup() {
+  // Serial port for debugging purposes
   Serial.begin(115200);
   
-  // Configura LED
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, LOW);
+  // Connect to Wi-Fi
+  WiFi.softAP(ssid,password);
   
-  // Inicia WiFi como Access Point
-  Serial.println("Iniciando WiFi AP...");
-  WiFi.softAP(ssid, password);
-  
+  // Print IP address and start web server
   Serial.println("");
-  Serial.println("WiFi AP iniciado");
-  Serial.print("SSID: ");
-  Serial.println(ssid);
-  Serial.print("IP: ");
+  Serial.println("IP address: ");
   Serial.println(WiFi.softAPIP());
-  
-  // Inicia WebSocket
-  initWebSocket();
-  
-  // Rota principal - HTML do Cegoinha
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", index_html);
-  });
-  
-  // Inicia servidor
   server.begin();
-  Serial.println("Servidor HTTP iniciado");
+
+  initWebSocket();
+
+  // Rota para enviar a página web
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/html", index_html, setupVariables);
+  });
+
+  // Start server
+  server.begin();
+
 }
 
 void loop() {
   ws.cleanupClients();
-  digitalWrite(ledPin, ledState);
+
 }
