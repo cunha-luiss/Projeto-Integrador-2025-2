@@ -1,14 +1,10 @@
-/* Reset and Base Styles */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* Reset and Base */
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #ffffff;
-    color: #000000;
+    background: #fff;
+    color: #000;
     line-height: 1.5;
     overflow-x: hidden;
 }
@@ -21,47 +17,32 @@ body {
     margin: 0 auto;
 }
 
-/* Header */
-.header {
-    padding: 32px 0 20px 70px;
-}
+.header { padding: 32px 0 20px 70px; }
 
-.title {
+.title, .section-title {
     font-size: 32px;
     font-weight: 400;
-    color: #000000;
+    margin-bottom: 20px;
 }
 
-/* Dividers */
 .divider {
     width: calc(100% + 40px);
     height: 5px;
-    background: linear-gradient(to right, #313C41 0%, #313C41 100%);
+    background: #313C41;
     margin: 20px -20px;
 }
 
-.divider-top {
-    margin-top: 0;
-}
+.divider-top { margin-top: 0; }
 
-/* Section Base Styles */
 .section {
     padding: 20px 0;
     margin-bottom: 20px;
     position: relative;
 }
 
-.section-title {
-    font-size: 32px;
-    font-weight: 400;
-    color: #000000;
-    margin-bottom: 20px;
-}
-
 .section-subtitle {
     font-size: 20px;
     font-weight: 400;
-    color: #000000;
     text-align: right;
     position: absolute;
     top: 20px;
@@ -73,10 +54,8 @@ body {
     position: relative;
 }
 
-/* Rotas Anteriores Section */
-.rotas-anteriores {
-    padding-left: 100px;
-}
+/* Rotas Anteriores */
+.rotas-anteriores, .consumo-carga, .status-carrinho { padding-left: 100px; }
 
 .rotas-grid {
     display: flex;
@@ -94,7 +73,7 @@ body {
 }
 
 .rota-header {
-    background-color: #313C41;
+    background: #313C41;
     padding: 10px 40px;
     display: flex;
     justify-content: space-between;
@@ -103,45 +82,23 @@ body {
     height: 46px;
 }
 
-.rota-name {
-    font-size: 32px;
-    color: #F6F6F6;
-    font-weight: 400;
-}
-
-.rota-distance {
-    font-size: 24px;
-    color: #F6F6F6;
-    font-weight: 400;
-}
+.rota-name { font-size: 32px; color: #F6F6F6; }
+.rota-distance { font-size: 24px; color: #F6F6F6; }
 
 .rota-body {
-    background-color: #C8C8C8;
+    background: #C8C8C8;
     padding: 20px;
-    height: calc(534px - 46px);
+    height: 488px;
     border-radius: 0 0 10px 10px;
 }
 
-.rota-time {
+.rota-time, .rota-vmedia, .rota-consumo {
     font-size: 24px;
-    color: #000000;
     text-align: center;
     margin-bottom: 8px;
 }
 
-.rota-vmedia {
-    font-size: 24px;
-    color: #000000;
-    text-align: center;
-    margin-bottom: 8px;
-}
-
-.rota-consumo {
-    font-size: 24px;
-    color: #000000;
-    text-align: center;
-    margin-bottom: 15px;
-}
+.rota-consumo { margin-bottom: 15px; }
 
 .mapa-container {
     width: 100%;
@@ -149,8 +106,8 @@ body {
     margin-top: 10px;
 }
 
-.mapa-placeholder {
-    background-color: #EC8A8A;
+.mapa-placeholder, .mapa-grande {
+    background: #EC8A8A;
     border-radius: 15px;
     width: 100%;
     height: 100%;
@@ -163,13 +120,12 @@ body {
 
 .mapa-text {
     font-size: 32px;
-    color: #000000;
     text-align: center;
     position: relative;
     z-index: 2;
 }
 
-.map-route {
+.map-route, .map-route-large {
     position: absolute;
     top: 0;
     left: 0;
@@ -179,44 +135,28 @@ body {
     pointer-events: none;
 }
 
-.truck-icon {
+.truck-icon, .award-icon, .truck-icon-large, .award-icon-large {
     position: absolute;
     font-size: 32px;
     z-index: 3;
     transition: all 0.3s ease;
 }
 
-.award-icon {
-    position: absolute;
-    font-size: 32px;
-    z-index: 3;
-    transition: all 0.3s ease;
-}
+.truck-icon-large, .award-icon-large { font-size: 40px; }
 
 .btn-rotas-limpar {
     margin-left: 460px;
     margin-top: 10px;
 }
 
-/* Consumo desde a última carga */
-.consumo-carga {
-    padding-left: 100px;
-}
-
+/* Consumo e Status */
 .consumo-list {
-    list-style-type: disc;
+    list-style: disc;
     padding-left: 48px;
     font-size: 32px;
 }
 
-.consumo-list li {
-    margin-bottom: 8px;
-}
-
-/* Status Carrinho */
-.status-carrinho {
-    padding-left: 100px;
-}
+.consumo-list li { margin-bottom: 8px; }
 
 .status-grid {
     display: flex;
@@ -233,7 +173,7 @@ body {
 }
 
 .status-header {
-    background-color: #313C41;
+    background: #313C41;
     color: #F6F6F6;
     font-size: 30px;
     text-align: center;
@@ -246,8 +186,7 @@ body {
 }
 
 .status-value {
-    background-color: #C8C8C8;
-    color: #000000;
+    background: #C8C8C8;
     font-size: 40px;
     text-align: center;
     padding: 20px;
@@ -258,7 +197,7 @@ body {
     justify-content: center;
 }
 
-/* Main Content Grid */
+/* Main Content */
 .main-content {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -267,10 +206,7 @@ body {
     margin-bottom: 30px;
 }
 
-/* Enviar Rota */
-.enviar-rota {
-    padding: 0;
-}
+.enviar-rota, .trajetoria { padding: 0; }
 
 .elementos-adicionados {
     display: flex;
@@ -315,35 +251,22 @@ body {
     margin-right: 10px;
 }
 
-.elemento-label {
+.elemento-label, .elemento-label-small, .elemento-value {
     font-size: 18px;
     color: #F6F6F6;
     line-height: 1.3;
 }
 
-.elemento-label-small {
-    font-size: 18px;
-    color: #F6F6F6;
-    margin: 0;
-    line-height: 1.3;
-}
+.elemento-label-small { margin: 0; }
 
-.elemento-value {
-    font-size: 18px;
-    color: #F6F6F6;
-    line-height: 1.3;
-}
-
-.btn-remover {
+.btn-remover, .btn-direcao, .btn-add {
     width: 30px;
     height: 30px;
     min-width: 30px;
-    background-color: #F6F6F6;
+    background: #F6F6F6;
     border: none;
     border-radius: 3px;
-    font-size: 28px;
-    line-height: 1;
-    color: #000000;
+    color: #000;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -351,21 +274,14 @@ body {
     flex-shrink: 0;
 }
 
-.btn-direcao {
-    width: 30px;
-    height: 30px;
-    min-width: 30px;
-    background-color: #F6F6F6;
-    border: none;
-    border-radius: 3px;
-    font-size: 16px;
-    color: #000000;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-left: 5px;
+.btn-remover { font-size: 28px; line-height: 1; }
+.btn-direcao { font-size: 16px; margin-left: 5px; }
+.btn-add {
+    font-size: 22px;
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .elemento-numero {
@@ -376,7 +292,7 @@ body {
     color: #F6F6F6;
 }
 
-/* Adicionar elementos */
+/* Adicionar */
 .adicionar-elementos {
     display: flex;
     gap: 20px;
@@ -389,63 +305,36 @@ body {
     padding: 10px;
     position: relative;
     height: 77px;
-    background-color: #C8C8C8;
+    background: #C8C8C8;
 }
 
-.adicionar-card.rotacao-add {
-    width: 399px;
-}
+.adicionar-card.rotacao-add { width: 399px; }
+.adicionar-card.distancia-add { width: 213px; }
 
-.adicionar-card.distancia-add {
-    width: 213px;
-}
-
-.add-label {
+.add-label, .add-label-top, .add-label-left {
     font-size: 18px;
-    color: #000000;
     position: absolute;
-    top: 10px;
-    left: 50px;
 }
 
-.add-label-top {
-    font-size: 18px;
-    color: #000000;
-    position: absolute;
-    top: 8px;
-    right: 50px;
-}
-
-.add-label-left {
-    font-size: 18px;
-    color: #000000;
-    position: absolute;
-    left: 50px;
-    top: 8px;
-}
+.add-label { top: 10px; left: 50px; }
+.add-label-top { top: 8px; right: 50px; }
+.add-label-left { left: 50px; top: 8px; }
 
 .add-input {
     position: absolute;
     bottom: 15px;
     left: 50px;
     right: 50px;
-    background-color: transparent;
+    background: transparent;
     border: none;
     border-bottom: 1px solid #666;
     font-size: 18px;
-    color: #000000;
     outline: none;
     padding: 3px 5px;
 }
 
-.distancia-add .add-input {
-    right: 15px;
-}
-
-.add-input-graus {
-    right: 130px;
-    width: 80px;
-}
+.distancia-add .add-input { right: 15px; }
+.add-input-graus { right: 130px; width: 80px; }
 
 .add-select-direcao {
     position: absolute;
@@ -453,11 +342,10 @@ body {
     right: 10px;
     width: 115px;
     height: 30px;
-    background-color: #F6F6F6;
+    background: #F6F6F6;
     border: 1px solid #666;
     border-radius: 5px;
     font-size: 16px;
-    color: #000000;
     outline: none;
     padding: 3px 8px;
     cursor: pointer;
@@ -468,60 +356,24 @@ body {
     box-shadow: 0 0 3px rgba(0, 38, 184, 0.3);
 }
 
-.btn-add {
-    width: 30px;
-    height: 30px;
-    background-color: #F6F6F6;
-    border: none;
-    border-radius: 3px;
-    font-size: 22px;
-    line-height: 1;
-    color: #000000;
-    cursor: pointer;
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+/* Botões */
+.acoes { display: flex; gap: 15px; }
 
-/* Botões de ação */
-.acoes {
-    display: flex;
-    gap: 15px;
-}
-
-.btn-concluir {
-    background-color: #31A208;
+.btn-concluir, .btn-limpar {
     color: #F6F6F6;
     font-size: 18px;
     padding: 12px 30px;
     border: none;
     border-radius: 10px;
     cursor: pointer;
-    font-weight: 400;
 }
 
-.btn-limpar {
-    background-color: #A21508;
-    color: #F6F6F6;
-    font-size: 18px;
-    padding: 12px 30px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 400;
-}
+.btn-concluir { background: #31A208; }
+.btn-limpar { background: #A21508; }
 
 /* Trajetória */
-.trajetoria {
-    padding: 0;
-}
-
 .trajetoria-card {
-    background-color: #0026B8;
+    background: #0026B8;
     border-radius: 20px;
     padding: 30px;
     color: #F6F6F6;
@@ -534,41 +386,9 @@ body {
 }
 
 .mapa-grande {
-    background-color: #EC8A8A;
-    border-radius: 15px;
-    width: 100%;
     max-width: 427px;
     height: 358px;
     margin-top: 20px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.map-route-large {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
-}
-
-.truck-icon-large {
-    position: absolute;
-    font-size: 40px;
-    z-index: 3;
-    transition: all 0.3s ease;
-}
-
-.award-icon-large {
-    position: absolute;
-    font-size: 40px;
-    z-index: 3;
-    transition: all 0.3s ease;
 }
 
 /* Status Percurso */
@@ -577,9 +397,7 @@ body {
     clear: both;
 }
 
-.status-percurso-section {
-    margin-top: 40px;
-}
+.status-percurso-section { margin-top: 40px; }
 
 .status-percurso-grid {
     display: grid;
@@ -595,40 +413,18 @@ body {
 }
 
 .status-percurso-card .status-header {
-    background-color: #313C41;
-    color: #F6F6F6;
-    font-size: 30px;
-    text-align: center;
-    padding: 12px;
-    border-radius: 10px 10px 0 0;
     height: 65px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 12px;
 }
 
 .status-percurso-card .status-value {
-    background-color: #C8C8C8;
-    color: #000000;
     font-size: 30px;
-    text-align: center;
-    padding: 20px;
-    border-radius: 0 0 10px 10px;
     height: 96px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
-/* Buttons hover effects */
-button:hover {
-    opacity: 0.85;
-    transition: opacity 0.2s;
-}
-
-button:active {
-    transform: scale(0.98);
-}
+/* Interações */
+button:hover { opacity: 0.85; transition: opacity 0.2s; }
+button:active { transform: scale(0.98); }
 
 /* Responsive adjustments */
 @media (max-width: 1400px) {
