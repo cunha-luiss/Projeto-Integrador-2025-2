@@ -2,16 +2,49 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
+#include <LittleFS.h>
+#include <vector>
 
 String exString;
 
 const char* ssid = "cegoinha";
 const char* password = "cegoinha123";
 
+#define ROTAS_FILE "/rotas.json"
+
 bool ledState1 = 0;
 bool ledState2 = 0;
 const int ledPin1 = 2;
 const int ledPin2 = 1;
+
+// Estrutura para armazenar informações do dispositivo conectado
+struct DispositivoConectado {
+  uint32_t clientId;
+  String deviceId;
+  String sessionId;
+  unsigned long lastSeen;
+};
+
+// Mapa de dispositivos conectados
+std::vector<DispositivoConectado> dispositivosConectados;
+
+// Estrutura para armazenar comandos de rota
+struct ComandoRota {
+  String tipo;        // "MOVE" ou "ROTATE"
+  int valor;          // distância ou ângulo em graus
+  String direcao;     // "direita" ou "esquerda" (apenas para ROTATE)
+};
+
+// Estrutura para armazenar uma rota completa
+struct Rota {
+  unsigned long id;
+  std::vector<ComandoRota> comandos;
+  String dataHora;
+  String deviceId;    // ID do dispositivo que enviou a rota
+};
+
+// Vetor para armazenar todas as rotas recebidas
+std::vector<Rota> rotasArmazenadas;
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -551,7 +584,7 @@ button:active { transform: scale(0.98); }
             <ul class="consumo-list">
                 <li><span id="rotas-concluidas">0</span> rotas concluídas</li>
                 <li><span id="bateria-gasta">0</span> Wh de bateria gastos (<span id="porcentagem-gasta">0</span>%% da bateria)</li>
-                <li><span id="distancia-total">0</span> cm andados</li>
+                <li><span id="distancia-total">0</span> andados</li>
             </ul>
         </section>
 
@@ -943,7 +976,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderizarElementos = () => {
         elementosContainer.innerHTML = rotaAtual.elementos.map((el, i) => {
             const content = el.tipo === 'distancia' 
-                ? `<p class="elemento-label">Distância</p><p class="elemento-value">${el.valor} cm</p>`
+                ? `<p class="elemento-label">Distância</p><p class="elemento-value">${el.valor}</p>`
                 : `<p class="elemento-label">Girar ${el.valor}°</p><p class="elemento-value">Direção: ${el.direcao === 'direita' ? 'Direita ➡️' : 'Esquerda ⬅️'}</p>`;
             
             return `<div class="elemento-item ${el.tipo}" data-id="${el.id}">
@@ -968,8 +1001,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (rotaAtual.elementos.length === 0) return alert('Adicione pelo menos um elemento à rota');
             
             const rota = {id: Date.now(), elementos: [...rotaAtual.elementos], dataHora: new Date().toISOString() };
-            rotas.push(rota);
-            renderizarRotasAnteriores();
             enviarRota(rota);
             rotaAtual.elementos = [];
             renderizarElementos();
@@ -990,10 +1021,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnLimparRotas) {
         btnLimparRotas.addEventListener('click', () => {
-            if (confirm('Deseja limpar todas as rotas anteriores?')) {
-                rotas = [];
-                renderizarRotasAnteriores();
-                alert('Rotas anteriores limpas!');
+            if (confirm('Deseja limpar todas as rotas anteriores? Isso afetará todos os usuários conectados.')) {
+                // Enviar comando para ESP32 limpar as rotas armazenadas
+                if (wsConnected) {
+                    websocket.send(JSON.stringify({ channel: "LIMPAR_ROTAS", deviceId: deviceId }));
+                }
             }
         });
     }
@@ -1006,50 +1038,153 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inputDistancia) inputDistancia.addEventListener('keypress', e => e.key === 'Enter' && btnAddDistancia.click());
     if (inputRotacao) inputRotacao.addEventListener('keypress', e => e.key === 'Enter' && btnAddRotacao.click());
 
-    // WebSocket
+    // ===== Sistema de Identificação de Dispositivo =====
+    // Gerar ou recuperar ID único do dispositivo
+    function getDeviceId() {
+        let deviceId = localStorage.getItem('cegoinha_device_id');
+        if (!deviceId) {
+            // Gerar novo ID único baseado em timestamp + random
+            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('cegoinha_device_id', deviceId);
+            console.log('🆔 Novo dispositivo criado:', deviceId);
+        } else {
+            console.log('🆔 Dispositivo reconhecido:', deviceId);
+        }
+        return deviceId;
+    }
+
+    // WebSocket - Configuração com reconexão automática e identificação
     var gateway = `ws://${window.location.hostname}/ws`;
     var websocket;
+    var wsConnected = false;
+    var reconnectInterval = null;
+    var deviceId = getDeviceId();
+    var sessionId = 'session_' + Date.now();
+    
     window.addEventListener('load', onLoad);
+    
     function initWebSocket() {
-        console.log('Trying to open a WebSocket connection...');
+        console.log('🔄 Tentando conectar ao WebSocket...');
+        console.log('🆔 Device ID:', deviceId);
+        console.log('🔑 Session ID:', sessionId);
         websocket = new WebSocket(gateway);
         websocket.onopen    = onOpen;
         websocket.onclose   = onClose;
-        websocket.onmessage = onMessage; // <-- atualizar isso aqui (falar o que fazer qndo receber mensagem)
+        websocket.onerror   = onError;
+        websocket.onmessage = onMessage;
     }
+    
     function onOpen(event) {
-        console.log('Connection opened');
+        console.log('✅ WebSocket conectado!');
+        wsConnected = true;
+        
+        // Enviar identificação do dispositivo para ESP32
+        const identificacao = {
+            channel: 'DEVICE_ID',
+            deviceId: deviceId,
+            sessionId: sessionId,
+            timestamp: Date.now()
+        };
+        websocket.send(JSON.stringify(identificacao));
+        console.log('📤 Identificação enviada para ESP32');
+        
+        // Limpar intervalo de reconexão se existir
+        if (reconnectInterval) {
+            clearInterval(reconnectInterval);
+            reconnectInterval = null;
+        }
+        
+        // Atualizar UI para mostrar status conectado
+        document.title = 'Cegoinha 🕊️ - Conectado';
     }
+    
     function onClose(event) {
-        console.log('Connection closed');
+        console.log('❌ WebSocket desconectado');
+        wsConnected = false;
+        document.title = 'Cegoinha 🕊️ - Desconectado';
+        
+        // Tentar reconectar após 2 segundos
+        console.log('⏳ Reconectando em 2 segundos...');
         setTimeout(initWebSocket, 2000);
     }
-    function onMessage(event) {
-        var state;
-        if (event.data == "1"){
-        state = "ON";
-        }
-        else{
-        state = "OFF";
-        }
-        document.getElementById('state').innerHTML = state;
+    
+    function onError(event) {
+        console.error('❌ Erro no WebSocket:', event);
+        wsConnected = false;
     }
-        // Enviar rota (placeholder para WebSocket)
+    
+    function onMessage(event) {
+        console.log('📨 Mensagem recebida:', event.data);
+        
+        try {
+            const data = JSON.parse(event.data);
+            
+            // Sincronizar rotas do servidor
+            if (data.channel === 'SYNC_ROTAS') {
+                console.log('🔄 Sincronizando rotas do servidor...');
+                rotas = data.rotas || [];
+                renderizarRotasAnteriores();
+                console.log(`✅ ${rotas.length} rotas sincronizadas`);
+            }
+            
+            // Nova rota adicionada por outro usuário
+            else if (data.channel === 'NOVA_ROTA') {
+                console.log('📥 Nova rota recebida de outro usuário');
+                rotas.push(data.rota);
+                renderizarRotasAnteriores();
+                atualizarEstatisticasGlobais();
+            }
+            
+            // Rotas foram limpas
+            else if (data.channel === 'ROTAS_LIMPAS') {
+                console.log('🗑️ Rotas limpas por outro usuário');
+                rotas = [];
+                renderizarRotasAnteriores();
+            }
+            
+            // Confirmação de dispositivo identificado
+            else if (data.status === 'ok' && data.message === 'Dispositivo identificado') {
+                console.log(`✅ Dispositivo identificado: ${data.deviceId}`);
+            }
+            
+        } catch (e) {
+            // Mensagem não é JSON, tratar como texto simples
+            console.log('Mensagem texto:', event.data);
+        }
+    }
+    
+    // Enviar rota
     const enviarRota = (rota) => {
+        if (!wsConnected) {
+            alert('⚠️ WebSocket não está conectado. Tentando reconectar...');
+            initWebSocket();
+            return;
+        }
         const comandos = rota.elementos.map(el => ({
             tipo: el.tipo === 'distancia' ? 'MOVE' : 'ROTATE',
-            ...(el.tipo === 'distancia' ? {valor: parseInt(el.valor), unidade: 'cm'} : {angulo: parseInt(el.valor), direcao: el.direcao})
+            ...(el.tipo === 'distancia' ? {valor: parseInt(el.valor)} : {angulo: parseInt(el.valor), direcao: el.direcao})
         }));
-        console.log('Enviando:', comandos);
-        websocket.send(JSON.stringify({ channel: "ENVIAR_ROTAS", value: comandos }));
+        console.log('📤 Enviando rota para ESP32:', comandos);
+        websocket.send(JSON.stringify({ 
+            channel: "ENVIAR_ROTAS", 
+            value: comandos,
+            deviceId: deviceId,
+            rotaId: rota.id
+        }));
     };
 
     function onLoad(event) {
         initWebSocket();
-        initButton();
     }
+    
+    function initButton(){
+        // Função mantida para compatibilidade
+    }
+    
     function toggle(id){
-        websocket.send({'message':'toggle', 'id': id});
+        if (wsConnected) {
+            websocket.send(JSON.stringify({'message':'toggle', 'id': id}));
+        }
     }
 });
     </script>
@@ -1057,18 +1192,141 @@ document.addEventListener('DOMContentLoaded', () => {
 </html>
 )rawliteral";
 
+// ===== Funções LittleFS para Persistência de Rotas =====
+
+// Salvar rotas no LittleFS
+void salvarRotasLittleFS() {
+  DynamicJsonDocument doc(8192);
+  JsonArray rotasArray = doc.createNestedArray("rotas");
+  
+  for (const auto& rota : rotasArmazenadas) {
+    JsonObject rotaObj = rotasArray.createNestedObject();
+    rotaObj["id"] = rota.id;
+    rotaObj["dataHora"] = rota.dataHora;
+    rotaObj["deviceId"] = rota.deviceId;
+    
+    JsonArray comandosArray = rotaObj.createNestedArray("comandos");
+    for (const auto& cmd : rota.comandos) {
+      JsonObject cmdObj = comandosArray.createNestedObject();
+      cmdObj["tipo"] = cmd.tipo;
+      cmdObj["valor"] = cmd.valor;
+      if (cmd.tipo == "ROTATE") {
+        cmdObj["direcao"] = cmd.direcao;
+      }
+    }
+  }
+  
+  File file = LittleFS.open(ROTAS_FILE, "w");
+  if (!file) {
+    Serial.println("❌ Erro ao abrir arquivo para escrita");
+    return;
+  }
+  
+  serializeJson(doc, file);
+  file.close();
+  Serial.printf("💾 %d rotas salvas no LittleFS\n", rotasArmazenadas.size());
+}
+
+// Carregar rotas do LittleFS
+void carregarRotasLittleFS() {
+  if (!LittleFS.exists(ROTAS_FILE)) {
+    Serial.println("📂 Nenhum arquivo de rotas encontrado");
+    return;
+  }
+  
+  File file = LittleFS.open(ROTAS_FILE, "r");
+  if (!file) {
+    Serial.println("❌ Erro ao abrir arquivo para leitura");
+    return;
+  }
+  
+  DynamicJsonDocument doc(8192);
+  DeserializationError error = deserializeJson(doc, file);
+  file.close();
+  
+  if (error) {
+    Serial.print("❌ Erro ao parsear JSON: ");
+    Serial.println(error.c_str());
+    return;
+  }
+  
+  rotasArmazenadas.clear();
+  JsonArray rotasArray = doc["rotas"];
+  
+  for (JsonObject rotaObj : rotasArray) {
+    Rota rota;
+    rota.id = rotaObj["id"];
+    rota.dataHora = rotaObj["dataHora"].as<String>();
+    rota.deviceId = rotaObj["deviceId"].as<String>();
+    
+    JsonArray comandosArray = rotaObj["comandos"];
+    for (JsonObject cmdObj : comandosArray) {
+      ComandoRota cmd;
+      cmd.tipo = cmdObj["tipo"].as<String>();
+      cmd.valor = cmdObj["valor"];
+      if (cmd.tipo == "ROTATE") {
+        cmd.direcao = cmdObj["direcao"].as<String>();
+      }
+      rota.comandos.push_back(cmd);
+    }
+    
+    rotasArmazenadas.push_back(rota);
+  }
+  
+  Serial.printf("✅ %d rotas carregadas do LittleFS\n", rotasArmazenadas.size());
+}
+
+// Enviar todas as rotas para um cliente específico
+void enviarRotasParaCliente(AsyncWebSocketClient *client) {
+  DynamicJsonDocument doc(8192);
+  doc["channel"] = "SYNC_ROTAS";
+  JsonArray rotasArray = doc.createNestedArray("rotas");
+  
+  for (const auto& rota : rotasArmazenadas) {
+    JsonObject rotaObj = rotasArray.createNestedObject();
+    rotaObj["id"] = rota.id;
+    rotaObj["dataHora"] = rota.dataHora;
+    
+    JsonArray elementosArray = rotaObj.createNestedArray("elementos");
+    for (const auto& cmd : rota.comandos) {
+      JsonObject elemObj = elementosArray.createNestedObject();
+      elemObj["tipo"] = (cmd.tipo == "MOVE") ? "distancia" : "rotacao";
+      elemObj["valor"] = cmd.valor;
+      elemObj["id"] = millis();
+      if (cmd.tipo == "ROTATE") {
+        elemObj["direcao"] = cmd.direcao;
+      }
+    }
+  }
+  
+  String jsonString;
+  serializeJson(doc, jsonString);
+  client->text(jsonString);
+  Serial.printf("📤 Rotas sincronizadas para cliente #%u\n", client->id());
+}
+
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
   void *arg, uint8_t *data, size_t len) {
   switch (type) {
     case WS_EVT_CONNECT: //executado quando cliente novo entra
       Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+      // Enviar rotas existentes para o novo cliente após um pequeno delay
+      // (aguardar identificação do dispositivo)
       break;
     case WS_EVT_DISCONNECT: //executado quando cliente desconecta
       Serial.printf("WebSocket client #%u disconnected\n", client->id());
+      // Remover dispositivo da lista ao desconectar
+      for (size_t i = 0; i < dispositivosConectados.size(); i++) {
+        if (dispositivosConectados[i].clientId == client->id()) {
+          Serial.printf("📤 Dispositivo %s desconectado\n", dispositivosConectados[i].deviceId.c_str());
+          dispositivosConectados.erase(dispositivosConectados.begin() + i);
+          break;
+        }
+      }
       break;
     case WS_EVT_DATA: //executado quando chega mensagem
-      mensagemRecebida(arg, data, len);
+      mensagemRecebida(client, arg, data, len);
       break;
     case WS_EVT_PONG:
     case WS_EVT_ERROR:
@@ -1081,17 +1339,18 @@ void initWebSocket() {
 }
 
 
-void mensagemRecebida(void *metadados, uint8_t *mensagem, size_t len) {
+void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *mensagem, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo*)metadados;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) { //verifica se recebe só texto
     
-    StaticJsonDocument<200> doc;
+    // Aumentar tamanho do buffer JSON para acomodar rotas maiores
+    DynamicJsonDocument doc(4096);
     DeserializationError error = deserializeJson(doc, mensagem, len);
 
     if (error) {
       Serial.print("Falha ao ler JSON: ");
       Serial.println(error.c_str());
-      return; // Para a execução se o JSON for inválido
+      return;
     }
     
     if (!doc.containsKey("channel")) {
@@ -1099,11 +1358,168 @@ void mensagemRecebida(void *metadados, uint8_t *mensagem, size_t len) {
       return;
     }
 
-    const char* channel = doc["channel"]; // Pega o valor da chave "channel"
-    float value = doc["value"];          // Pega o valor da chave "value"
-
+    const char* channel = doc["channel"];
     Serial.printf("Canal recebido: %s\n", channel);
-    Serial.printf("Valor recebido: %f\n", value);
+
+    // Processar identificação de dispositivo
+    if (strcmp(channel, "DEVICE_ID") == 0) {
+      String deviceId = doc["deviceId"].as<String>();
+      String sessionId = doc["sessionId"].as<String>();
+      
+      // Verificar se dispositivo já existe
+      bool dispositivoExistente = false;
+      for (auto &disp : dispositivosConectados) {
+        if (disp.deviceId == deviceId) {
+          // Atualizar informações do dispositivo existente
+          disp.clientId = client->id();
+          disp.sessionId = sessionId;
+          disp.lastSeen = millis();
+          dispositivoExistente = true;
+          Serial.printf("🔄 Dispositivo reconectado: %s (Client #%u)\n", deviceId.c_str(), client->id());
+          break;
+        }
+      }
+      
+      if (!dispositivoExistente) {
+        // Adicionar novo dispositivo
+        DispositivoConectado novoDispositivo;
+        novoDispositivo.clientId = client->id();
+        novoDispositivo.deviceId = deviceId;
+        novoDispositivo.sessionId = sessionId;
+        novoDispositivo.lastSeen = millis();
+        dispositivosConectados.push_back(novoDispositivo);
+        Serial.printf("🆕 Novo dispositivo registrado: %s (Client #%u)\n", deviceId.c_str(), client->id());
+      }
+      
+      Serial.printf("📊 Total de dispositivos: %d\n", dispositivosConectados.size());
+      
+      // Enviar confirmação
+      String resposta = "{\"status\":\"ok\",\"message\":\"Dispositivo identificado\",\"deviceId\":\"" + deviceId + "\"}";
+      client->text(resposta);
+      
+      // Enviar rotas existentes para sincronização
+      enviarRotasParaCliente(client);
+      return;
+    }
+
+    // Processar envio de rotas
+    if (strcmp(channel, "ENVIAR_ROTAS") == 0) {
+      if (!doc.containsKey("value")) {
+        Serial.println("Erro: 'value' não encontrado para ENVIAR_ROTAS");
+        return;
+      }
+
+      String deviceId = doc.containsKey("deviceId") ? doc["deviceId"].as<String>() : "unknown";
+      JsonArray comandosArray = doc["value"].as<JsonArray>();
+      
+      // Criar nova rota
+      Rota novaRota;
+      novaRota.id = doc.containsKey("rotaId") ? doc["rotaId"].as<unsigned long>() : millis();
+      novaRota.dataHora = String(novaRota.id);
+      novaRota.deviceId = deviceId;
+      
+      Serial.println("=== Nova Rota Recebida ===");
+      Serial.printf("Device ID: %s\n", deviceId.c_str());
+      Serial.printf("ID da Rota: %lu\n", novaRota.id);
+      Serial.printf("Total de comandos: %d\n", comandosArray.size());
+      
+      // Processar cada comando
+      for (JsonObject comandoObj : comandosArray) {
+        ComandoRota comando;
+        comando.tipo = comandoObj["tipo"].as<String>();
+        
+        if (comando.tipo == "MOVE") {
+          comando.valor = comandoObj["valor"];
+          Serial.printf("  - MOVE: %d\n", comando.valor);
+        } else if (comando.tipo == "ROTATE") {
+          comando.valor = comandoObj["angulo"];
+          comando.direcao = comandoObj["direcao"].as<String>();
+          Serial.printf("  - ROTATE: %d° para %s\n", comando.valor, comando.direcao.c_str());
+        }
+        
+        novaRota.comandos.push_back(comando);
+      }
+      
+      // Adicionar rota ao armazenamento
+      rotasArmazenadas.push_back(novaRota);
+      Serial.printf("Rota armazenada! Total de rotas: %d\n", rotasArmazenadas.size());
+      
+      // Salvar no LittleFS
+      salvarRotasLittleFS();
+      
+      Serial.println("==========================\n");
+      
+      // Notificar TODOS os clientes sobre a nova rota
+      DynamicJsonDocument notifDoc(2048);
+      notifDoc["channel"] = "NOVA_ROTA";
+      notifDoc["rotaId"] = novaRota.id;
+      notifDoc["totalRotas"] = rotasArmazenadas.size();
+      
+      JsonObject rotaObj = notifDoc.createNestedObject("rota");
+      rotaObj["id"] = novaRota.id;
+      rotaObj["dataHora"] = novaRota.dataHora;
+      
+      JsonArray elementosArray = rotaObj.createNestedArray("elementos");
+      for (const auto& cmd : novaRota.comandos) {
+        JsonObject elemObj = elementosArray.createNestedObject();
+        elemObj["tipo"] = (cmd.tipo == "MOVE") ? "distancia" : "rotacao";
+        elemObj["valor"] = cmd.valor;
+        elemObj["id"] = millis() + random(1000);
+        if (cmd.tipo == "ROTATE") {
+          elemObj["direcao"] = cmd.direcao;
+        }
+      }
+      
+      String notifString;
+      serializeJson(notifDoc, notifString);
+      ws.textAll(notifString);
+    }
+    
+    // Processar comando para limpar rotas
+    else if (strcmp(channel, "LIMPAR_ROTAS") == 0) {
+      String deviceId = doc.containsKey("deviceId") ? doc["deviceId"].as<String>() : "unknown";
+      int totalRotasAntes = rotasArmazenadas.size();
+      rotasArmazenadas.clear();
+      
+      // Limpar arquivo LittleFS
+      LittleFS.remove(ROTAS_FILE);
+      
+      Serial.println("=== Rotas Limpas ===");
+      Serial.printf("Device ID: %s\n", deviceId.c_str());
+      Serial.printf("Rotas removidas: %d\n", totalRotasAntes);
+      Serial.println("====================\n");
+      
+      // Notificar TODOS os clientes
+      String resposta = "{\"channel\":\"ROTAS_LIMPAS\",\"status\":\"ok\",\"rotasRemovidas\":" + String(totalRotasAntes) + "}";
+      ws.textAll(resposta);
+    }
+    
+    // Processar comando para listar rotas armazenadas
+    else if (strcmp(channel, "LISTAR_ROTAS") == 0) {
+      Serial.println("=== Rotas Armazenadas ===");
+      Serial.printf("Total: %d rotas\n", rotasArmazenadas.size());
+      
+      for (size_t i = 0; i < rotasArmazenadas.size(); i++) {
+        Serial.printf("\nRota %d (ID: %lu):\n", i + 1, rotasArmazenadas[i].id);
+        Serial.printf("  Comandos: %d\n", rotasArmazenadas[i].comandos.size());
+        
+        for (size_t j = 0; j < rotasArmazenadas[i].comandos.size(); j++) {
+          ComandoRota cmd = rotasArmazenadas[i].comandos[j];
+          if (cmd.tipo == "MOVE") {
+            Serial.printf("    %d. MOVE %d\n", j + 1, cmd.valor);
+          } else {
+            Serial.printf("    %d. ROTATE %d° %s\n", j + 1, cmd.valor, cmd.direcao.c_str());
+          }
+        }
+      }
+      Serial.println("=========================\n");
+    }
+    
+    // Comando genérico
+    else {
+      float value = doc["value"];
+      Serial.printf("Valor recebido: %f\n", value);
+    }
   }
 }
 
@@ -1123,14 +1539,45 @@ void setup() {
   // Serial port for debugging purposes
   Serial.begin(115200);
   
+  Serial.println("\n\n=================================");
+  Serial.println("    CEGOINHA ESP32 - Iniciando");
+  Serial.println("=================================");
+  
+  // Inicializar LittleFS
+  Serial.println("\n--- Inicializando LittleFS ---");
+  if (!LittleFS.begin(true)) {
+    Serial.println("❌ Erro ao montar LittleFS");
+    Serial.println("⚠️ Sistema continuará sem persistência");
+  } else {
+    Serial.println("✅ LittleFS montado com sucesso");
+    
+    // Mostrar informações do sistema de arquivos
+    size_t totalBytes = LittleFS.totalBytes();
+    size_t usedBytes = LittleFS.usedBytes();
+    Serial.printf("📊 Espaço total: %d bytes\n", totalBytes);
+    Serial.printf("📊 Espaço usado: %d bytes (%.1f%%)\n", usedBytes, (usedBytes * 100.0) / totalBytes);
+  }
+  Serial.println("------------------------------\n");
+  
+  // Inicializar vetores
+  rotasArmazenadas.clear();
+  dispositivosConectados.clear();
+  Serial.println("✅ Sistema de armazenamento de rotas inicializado");
+  Serial.println("✅ Sistema de identificação de dispositivos inicializado");
+  
+  // Carregar rotas salvas
+  carregarRotasLittleFS();
+  
   // Connect to Wi-Fi
   WiFi.softAP(ssid,password);
   
   // Print IP address and start web server
-  Serial.println("");
-  Serial.println("IP address: ");
+  Serial.println("\n--- Configuração de Rede ---");
+  Serial.println("Modo: Access Point");
+  Serial.printf("SSID: %s\n", ssid);
+  Serial.print("IP address: ");
   Serial.println(WiFi.softAPIP());
-  server.begin();
+  Serial.println("----------------------------\n");
 
   initWebSocket();
 
@@ -1141,10 +1588,35 @@ void setup() {
 
   // Start server
   server.begin();
-
+  
+  Serial.println("Servidor Web iniciado!");
+  Serial.println("Aguardando conexões...\n");
+  Serial.println("=================================\n");
 }
 
 void loop() {
   ws.cleanupClients();
+}
 
+// Função auxiliar para obter informações de uma rota específica
+String getRotaInfo(size_t indice) {
+  if (indice >= rotasArmazenadas.size()) {
+    return "Rota não encontrada";
+  }
+  
+  Rota rota = rotasArmazenadas[indice];
+  String info = "Rota ID: " + String(rota.id) + "\n";
+  info += "Comandos: " + String(rota.comandos.size()) + "\n";
+  
+  for (size_t i = 0; i < rota.comandos.size(); i++) {
+    ComandoRota cmd = rota.comandos[i];
+    info += "  " + String(i + 1) + ". ";
+    if (cmd.tipo == "MOVE") {
+      info += "MOVE " + String(cmd.valor) + "\n";
+    } else {
+      info += "ROTATE " + String(cmd.valor) + "° " + cmd.direcao + "\n";
+    }
+  }
+  
+  return info;
 }
