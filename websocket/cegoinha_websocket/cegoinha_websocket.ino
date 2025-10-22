@@ -5,17 +5,10 @@
 #include <LittleFS.h>
 #include <vector>
 
-String exString;
-
 const char* ssid = "cegoinha";
 const char* password = "cegoinha123";
 
 #define ROTAS_FILE "/rotas.json"
-
-bool ledState1 = 0;
-bool ledState2 = 0;
-const int ledPin1 = 2;
-const int ledPin2 = 1;
 
 // Estrutura para armazenar informações do dispositivo conectado
 struct DispositivoConectado {
@@ -448,6 +441,7 @@ body {
     max-width: 427px;
     height: 358px;
     margin-top: 20px;
+    margin: 20px auto 0 auto;
 }
 
 /* Status Percurso */
