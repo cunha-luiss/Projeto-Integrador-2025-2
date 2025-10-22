@@ -578,7 +578,7 @@ button:active { transform: scale(0.98); }
             <ul class="consumo-list">
                 <li><span id="rotas-concluidas">0</span> rotas concluídas</li>
                 <li><span id="bateria-gasta">0</span> Wh de bateria gastos (<span id="porcentagem-gasta">0</span>%% da bateria)</li>
-                <li><span id="distancia-total">0</span> andados</li>
+                <li><span id="distancia-total">0</span> cm andados</li>
             </ul>
         </section>
 
