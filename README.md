@@ -304,8 +304,6 @@ Para mais detalhes de troubleshooting, consulte: `websocket/cegoinha_websocket/T
 
 - **LITTLEFS_SYNC.md** - Detalhes do sistema de persistência
 - **TESTES.md** - Casos de teste e validação
-- **OTIMIZACAO.md** - Histórico de otimizações realizadas
-- **TROUBLESHOOTING.md** - Guia completo de resolução de problemas
 
 ---
 
