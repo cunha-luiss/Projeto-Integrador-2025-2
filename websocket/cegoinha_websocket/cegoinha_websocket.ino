@@ -10,6 +10,34 @@ const char* password = "cegoinha123";
 
 #define ROTAS_FILE "/rotas.json"
 
+// ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
+
+// --- Pinos do Motor da Porta (L298N) ---
+// Mude estes pinos conforme a sua ligação real
+#define PIN_IN1 25
+#define PIN_IN2 26
+#define PIN_ENA 27 // Pino para controle de velocidade (PWM)
+
+// --- Pinos dos Sensores da Porta (Fim de Curso) ---
+// Mude estes pinos conforme a sua ligação real
+#define SENSOR_PORTA_ABERTA 34
+#define SENSOR_PORTA_FECHADA 35
+
+// --- Configuração do PWM da Porta ---
+int freqPWM_Porta = 5000;
+int canalPWM_Porta = 0; // Canal PWM 0 (verificar se não há conflito com PWM das rodas)
+int resolucaoPWM_Porta = 8; // 8 bits (0-255)
+int velocidadeMotorPorta = 200; // Velocidade de 0-255
+
+// --- Controle de Estado da Porta (Lógica Não-Bloqueante) ---
+#define ESTADO_PORTA_PARADO 0
+#define ESTADO_PORTA_ABRINDO 1
+#define ESTADO_PORTA_FECHANDO 2
+
+int estadoPorta = ESTADO_PORTA_PARADO; // Estado atual da porta
+
+// ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
+
 // Estrutura para armazenar informações do dispositivo conectado
 struct DispositivoConectado {
   uint32_t clientId;
@@ -23,9 +51,9 @@ std::vector<DispositivoConectado> dispositivosConectados;
 
 // Estrutura para armazenar comandos de rota
 struct ComandoRota {
-  String tipo;        // "MOVE" ou "ROTATE"
-  int valor;          // distância ou ângulo em graus
-  String direcao;     // "direita" ou "esquerda" (apenas para ROTATE)
+  String tipo;      // "MOVE" ou "ROTATE"
+  int valor;        // distância ou ângulo em graus
+  String direcao;   // "direita" ou "esquerda" (apenas para ROTATE)
 };
 
 // Estrutura para armazenar uma rota completa
@@ -62,7 +90,7 @@ body {
 }
 
 .main-container {
-    width: 100%%;
+    width: 100%;
     min-height: 100vh;
     padding: 20px;
     max-width: 1400px;
@@ -78,7 +106,7 @@ body {
 }
 
 .divider {
-    width: calc(100%% + 40px);
+    width: calc(100% + 40px);
     height: 5px;
     background: #313C41;
     margin: 20px -20px;
@@ -153,7 +181,7 @@ body {
 .rota-consumo { margin-bottom: 15px; }
 
 .mapa-container {
-    width: 100%%;
+    width: 100%;
     height: 320px;
     margin-top: 10px;
 }
@@ -161,8 +189,8 @@ body {
 .mapa-placeholder, .mapa-grande {
     background: #EC8A8A;
     border-radius: 15px;
-    width: 100%%;
-    height: 100%%;
+    width: 100%;
+    height: 100%;
     position: relative;
     display: flex;
     align-items: center;
@@ -181,8 +209,8 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%%;
-    height: 100%%;
+    width: 100%;
+    height: 100%;
     z-index: 1;
     pointer-events: none;
 }
@@ -332,8 +360,8 @@ body {
     font-size: 22px;
     position: absolute;
     left: 10px;
-    top: 50%%;
-    transform: translateY(-50%%);
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .elemento-numero {
@@ -513,7 +541,7 @@ button:active { transform: scale(0.98); }
     }
     
     .card-rota {
-        width: 100%%;
+        width: 100%;
         max-width: 491px;
     }
     
@@ -522,12 +550,12 @@ button:active { transform: scale(0.98); }
     }
     
     .adicionar-card {
-        width: 100%% !important;
+        width: 100% !important;
         max-width: 399px;
     }
     
     .elemento-item {
-        width: 100%% !important;
+        width: 100% !important;
         max-width: 399px;
     }
     
@@ -547,44 +575,58 @@ button:active { transform: scale(0.98); }
     }
 }
 
+/* ===== INÍCIO: CSS ADICIONADO PARA A PORTA ===== */
+.section-porta {
+    padding-left: 100px;
+}
+
+@media (max-width: 768px) {
+    .section-porta {
+        padding-left: 20px;
+    }
+}
+
+#status-porta-info {
+    margin-top: 15px;
+    font-size: 18px;
+    color: #313C41;
+    font-weight: 500;
+}
+/* ===== FIM: CSS ADICIONADO PARA A PORTA ===== */
+
     </style>
 </head>
 <body>
     <div class="main-container" data-name="Tela principal" data-node-id="64:174">
-        <!-- Header -->
         <div class="header">
             <p class="title">Cegoinha 🕊️</p>
         </div>
         <div class="divider divider-top"></div>
 
-        <!-- Rotas Anteriores Section -->
         <section class="section rotas-anteriores" data-node-id="82:416">
             <div class="section-header">
                 <p class="section-title">Rotas Anteriores</p>
             </div>
             
             <div class="rotas-grid">
-                <!-- Cards de rotas serão gerados dinamicamente pelo JavaScript -->
-            </div>
+                </div>
 
             <button class="btn-limpar btn-rotas-limpar">Limpar</button>
         </section>
 
         <div class="divider"></div>
 
-        <!-- Consumo desde a última carga -->
         <section class="section consumo-carga" data-node-id="82:417">
             <p class="section-title">Consumo desde a última carga</p>
             <ul class="consumo-list">
                 <li><span id="rotas-concluidas">0</span> rotas concluídas</li>
-                <li><span id="bateria-gasta">0</span> Wh de bateria gastos (<span id="porcentagem-gasta">0</span>%% da bateria)</li>
+                <li><span id="bateria-gasta">0</span> Wh de bateria gastos (<span id="porcentagem-gasta">0</span>% da bateria)</li>
                 <li><span id="distancia-total">0</span> cm andados</li>
             </ul>
         </section>
 
         <div class="divider"></div>
 
-        <!-- Status Carrinho -->
         <section class="section status-carrinho" data-node-id="179:434">
             <p class="section-title">Status carrinho</p>
             <div class="status-grid">
@@ -598,25 +640,30 @@ button:active { transform: scale(0.98); }
                 </div>
                 <div class="status-card" data-node-id="179:436">
                     <div class="status-header">Bateria restante</div>
-                    <div class="status-value"><span id="bateria-soc">100</span>%%</div>
+                    <div class="status-value"><span id="bateria-soc">100</span>%</div>
                 </div>
             </div>
         </section>
 
         <div class="divider"></div>
 
-        <!-- Main Content Grid -->
+        <section class="section section-porta">
+            <p class="section-title">Controle da Porta</p>
+            <div class="acoes">
+                <button class="btn-concluir" id="btn-abrir-porta" style="background-color: #0026B8;">Abrir Porta</button>
+                <button class="btn-limpar" id="btn-fechar-porta">Fechar Porta</button>
+            </div>
+            <p id="status-porta-info"></p>
+        </section>
+        
+        <div class="divider"></div>
         <div class="main-content">
-            <!-- Enviar Rota Section -->
             <section class="section enviar-rota" data-node-id="82:418">
                 <p class="section-title">Enviar rota</p>
                 
-                <!-- Elementos adicionados -->
                 <div class="elementos-adicionados">
-                    <!-- Elementos serão gerados dinamicamente pelo JavaScript -->
-                </div>
+                    </div>
 
-                <!-- Adicionar elementos -->
                 <div class="adicionar-elementos">
                     <div class="adicionar-card rotacao-add">
                         <p class="add-label-top">Direção</p>
@@ -636,14 +683,12 @@ button:active { transform: scale(0.98); }
                     </div>
                 </div>
 
-                <!-- Botões de ação -->
                 <div class="acoes">
                     <button class="btn-concluir">Concluir</button>
                     <button class="btn-limpar">Limpar</button>
                 </div>
             </section>
 
-            <!-- Trajetória Section -->
             <section class="section trajetoria" data-node-id="64:546">
                 <p class="section-title">Trajetória</p>
                 
@@ -652,15 +697,13 @@ button:active { transform: scale(0.98); }
                     <p class="trajetoria-info">Tempo estimado do percurso: 60s</p>
                     
                     <div class="mapa-grande">
-                        <svg class="map-route-large" width="100%%" height="100%%" viewBox="0 0 400 350" preserveAspectRatio="xMidYMid meet" fill="none">
-                            <!-- O caminho será desenhado aqui dinamicamente -->
-                        </svg>
+                        <svg class="map-route-large" width="100%" height="100%" viewBox="0 0 400 350" preserveAspectRatio="xMidYMid meet" fill="none">
+                            </svg>
                         <div class="truck-icon-large">🚚</div>
                         <div class="award-icon-large">🏆</div>
                     </div>
                 </div>
 
-                <!-- Status Percurso -->
                 <div class="status-percurso-section" data-node-id="64:612">
                     <p class="section-title" style="margin-top: 40px;">Status percurso</p>
                     <div class="status-percurso-grid">
@@ -712,6 +755,12 @@ document.addEventListener('DOMContentLoaded', () => {
         distancia: $$('.trajetoria-info')[0],
         tempo: $$('.trajetoria-info')[1]
     };
+    
+    // ===== INÍCIO: JS ADICIONADO PARA A PORTA =====
+    const btnAbrirPorta = $('#btn-abrir-porta');
+    const btnFecharPorta = $('#btn-fechar-porta');
+    const statusPortaInfo = $('#status-porta-info');
+    // ===== FIM: JS ADICIONADO PARA A PORTA =====
 
     // Calcular trajetória com auto-escala
     const calcularTrajetoria = (elementos, viewBoxWidth, viewBoxHeight, margem) => {
@@ -727,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pontos.push({x, y});
             } else if (el.tipo === 'rotacao') {
                 angulo += parseFloat(el.valor) * (el.direcao === 'direita' ? 1 : -1);
-                angulo = ((angulo %% 360) + 360) %% 360;
+                angulo = ((angulo % 360) + 360) % 360;
             }
         });
         
@@ -761,8 +810,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const caminhao = $('.trajetoria .truck-icon-large');
             const trofeu = $('.trajetoria .award-icon-large');
-            if (caminhao) { caminhao.style.left = '15%%'; caminhao.style.bottom = '10%%'; }
-            if (trofeu) { trofeu.style.left = '85%%'; trofeu.style.bottom = '10%%'; }
+            if (caminhao) { caminhao.style.left = '15%'; caminhao.style.bottom = '10%'; }
+            if (trofeu) { trofeu.style.left = '85%'; trofeu.style.bottom = '10%'; }
             return;
         }
         
@@ -785,7 +834,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pontoFinal = {x: novoX, y: novoY};
             } else if (el.tipo === 'rotacao') {
                 angulo += parseFloat(el.valor) * (el.direcao === 'direita' ? 1 : -1);
-                angulo = ((angulo %% 360) + 360) %% 360;
+                angulo = ((angulo % 360) + 360) % 360;
             }
         });
         
@@ -793,9 +842,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const atualizarIcone = (icone, ponto) => {
             if (icone) {
-                icone.style.left = `${(ponto.x / viewBoxWidth) * 100}%%`;
-                icone.style.bottom = `${((viewBoxHeight - ponto.y) / viewBoxHeight) * 100}%%`;
-                icone.style.transform = 'translate(-50%%, 50%%)';
+                icone.style.left = `${(ponto.x / viewBoxWidth) * 100}%`;
+                icone.style.bottom = `${((viewBoxHeight - ponto.y) / viewBoxHeight) * 100}%`;
+                icone.style.transform = 'translate(-50%, 50%)';
             }
         };
         
@@ -836,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pontoFinal = {x: novoX, y: novoY};
             } else if (el.tipo === 'rotacao') {
                 angulo += parseFloat(el.valor) * (el.direcao === 'direita' ? 1 : -1);
-                angulo = ((angulo %% 360) + 360) %% 360;
+                angulo = ((angulo % 360) + 360) % 360;
             }
         });
         
@@ -897,9 +946,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="rota-consumo">Consumo de ${stats.consumo} Wh de bateria</p>
                         <div class="mapa-container">
                             <div class="mapa-placeholder">
-                                <svg class="map-route" width="100%%" height="100%%" viewBox="0 0 316 211" preserveAspectRatio="xMidYMid meet" fill="none">${svg.path}</svg>
-                                <div class="truck-icon" style="left:${calcPos(svg.pontoInicial.x, svg.viewBox.width)}%%; bottom:${calcBottom(svg.pontoInicial.y, svg.viewBox.height)}%%; transform:translate(-50%%,50%%)">🚚</div>
-                                <div class="award-icon" style="left:${calcPos(svg.pontoFinal.x, svg.viewBox.width)}%%; bottom:${calcBottom(svg.pontoFinal.y, svg.viewBox.height)}%%; transform:translate(-50%%,50%%)">🏆</div>
+                                <svg class="map-route" width="100%" height="100%" viewBox="0 0 316 211" preserveAspectRatio="xMidYMid meet" fill="none">${svg.path}</svg>
+                                <div class="truck-icon" style="left:${calcPos(svg.pontoInicial.x, svg.viewBox.width)}%; bottom:${calcBottom(svg.pontoInicial.y, svg.viewBox.height)}%; transform:translate(-50%,50%)">🚚</div>
+                                <div class="award-icon" style="left:${calcPos(svg.pontoFinal.x, svg.viewBox.width)}%; bottom:${calcBottom(svg.pontoFinal.y, svg.viewBox.height)}%; transform:translate(-50%,50%)">🏆</div>
                             </div>
                         </div>
                     </div>
@@ -1023,6 +1072,33 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    
+    // ===== INÍCIO: JS ADICIONADO PARA A PORTA =====
+    if (btnAbrirPorta) {
+        btnAbrirPorta.addEventListener('click', () => {
+            console.log('Enviando comando ABRIR');
+            if (wsConnected) {
+                // O backend espera um JSON com "channel"
+                websocket.send(JSON.stringify({ channel: "ABRIR", deviceId: deviceId }));
+            } else {
+                alert('WebSocket não conectado!');
+            }
+        });
+    }
+
+    if (btnFecharPorta) {
+        btnFecharPorta.addEventListener('click', () => {
+            console.log('Enviando comando FECHAR');
+            if (wsConnected) {
+                // O backend espera um JSON com "channel"
+                websocket.send(JSON.stringify({ channel: "FECHAR", deviceId: deviceId }));
+            } else {
+                alert('WebSocket não conectado!');
+            }
+        });
+    }
+    // ===== FIM: JS ADICIONADO PARA A PORTA =====
+
 
     // Inicialização
     renderizarRotasAnteriores();
@@ -1140,6 +1216,26 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (data.status === 'ok' && data.message === 'Dispositivo identificado') {
                 console.log(`✅ Dispositivo identificado: ${data.deviceId}`);
             }
+
+            // ===== INÍCIO: JS ADICIONADO PARA A PORTA =====
+            // Receber status da porta (que o loop() envia)
+            else if (data.channel === 'STATUS_PORTA') {
+                console.log('Status da porta atualizado:', data.status);
+                if (statusPortaInfo) {
+                    statusPortaInfo.textContent = `A porta está: ${data.status}`;
+                }
+            }
+            
+            // Receber mensagens de info/status da porta
+            else if (data.status === 'ok' || data.status === 'info') {
+                 if (data.message && data.message.includes('Porta')) {
+                    console.log('Info da porta:', data.message);
+                    if (statusPortaInfo) {
+                        statusPortaInfo.textContent = data.message;
+                    }
+                 }
+            }
+            // ===== FIM: JS ADICIONADO PARA A PORTA =====
             
         } catch (e) {
             // Mensagem não é JSON, tratar como texto simples
@@ -1298,6 +1394,31 @@ void enviarRotasParaCliente(AsyncWebSocketClient *client) {
   client->text(jsonString);
   Serial.printf("📤 Rotas sincronizadas para cliente #%u\n", client->id());
 }
+
+// ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
+// --- Funções de Baixo Nível do Motor da Porta ---
+
+// Para o motor (freio)
+void pararPorta() {
+  digitalWrite(PIN_IN1, LOW);
+  digitalWrite(PIN_IN2, LOW);
+  ledcWrite(canalPWM_Porta, 0); // Desliga a velocidade
+}
+
+// Gira em um sentido (Ex: Abrir)
+void abrirPortaLogica(int velocidade) { 
+  digitalWrite(PIN_IN1, HIGH);
+  digitalWrite(PIN_IN2, LOW);
+  ledcWrite(canalPWM_Porta, velocidade); // Define a velocidade
+}
+
+// Gira no outro sentido (Ex: Fechar)
+void fecharPortaLogica(int velocidade) {
+  digitalWrite(PIN_IN1, LOW);
+  digitalWrite(PIN_IN2, HIGH);
+  ledcWrite(canalPWM_Porta, velocidade); // Define a velocidade
+}
+// ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
@@ -1508,6 +1629,36 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       }
       Serial.println("=========================\n");
     }
+
+    // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
+
+    // Processar comando para ABRIR A PORTA
+    else if (strcmp(channel, "ABRIR") == 0) {
+      // Verifica se a porta já não está aberta (sensor HIGH = não pressionado)
+      if (digitalRead(SENSOR_PORTA_ABERTA) == HIGH) { 
+        Serial.println("Comando: ABRIR. Iniciando abertura...");
+        estadoPorta = ESTADO_PORTA_ABRINDO; // Muda o estado
+        client->text("{\"status\":\"ok\",\"message\":\"Comando 'ABRIR' recebido. Abrindo...\"}");
+      } else {
+        Serial.println("Comando: ABRIR. Porta já está aberta.");
+        client->text("{\"status\":\"info\",\"message\":\"Porta ja esta aberta.\"}");
+      }
+    }
+
+    // Processar comando para FECHAR A PORTA
+    else if (strcmp(channel, "FECHAR") == 0) {
+      // Verifica se a porta já não está fechada (sensor HIGH = não pressionado)
+      if (digitalRead(SENSOR_PORTA_FECHADA) == HIGH) { 
+        Serial.println("Comando: FECHAR. Iniciando fechamento...");
+        estadoPorta = ESTADO_PORTA_FECHANDO; // Muda o estado
+        client->text("{\"status\":\"ok\",\"message\":\"Comando 'FECHAR' recebido. Fechando...\"}");
+      } else {
+        Serial.println("Comando: FECHAR. Porta já está fechada.");
+        client->text("{\"status\":\"info\",\"message\":\"Porta ja esta fechada.\"}");
+      }
+    }
+
+    // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
     
     // Comando genérico
     else {
@@ -1552,6 +1703,27 @@ void setup() {
     Serial.printf("📊 Espaço usado: %d bytes (%.1f%%)\n", usedBytes, (usedBytes * 100.0) / totalBytes);
   }
   Serial.println("------------------------------\n");
+
+  // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
+  Serial.println("--- Setup do Motor da Porta ---");
+  // --- Setup do Motor ---
+  pinMode(PIN_IN1, OUTPUT);
+  pinMode(PIN_IN2, OUTPUT);
+  // Configura o PWM para o pino ENA
+  ledcSetup(canalPWM_Porta, freqPWM_Porta, resolucaoPWM_Porta);
+  ledcAttachPin(PIN_ENA, canalPWM_Porta);
+  // Garante que o motor comece parado
+  pararPorta(); 
+  Serial.println("✅ Driver L298N (Porta) configurado.");
+
+  // --- Setup dos Sensores ---
+  // INPUT_PULLUP: O pino fica em HIGH (1) por padrão.
+  // Quando o sensor é pressionado, ele aterra o pino, que lê LOW (0).
+  pinMode(SENSOR_PORTA_ABERTA, INPUT_PULLUP);
+  pinMode(SENSOR_PORTA_FECHADA, INPUT_PULLUP);
+  Serial.println("✅ Sensores Fim de Curso (Porta) configurados.");
+  Serial.println("------------------------------\n");
+  // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
   
   // Inicializar vetores
   rotasArmazenadas.clear();
@@ -1590,6 +1762,51 @@ void setup() {
 
 void loop() {
   ws.cleanupClients();
+
+  // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
+  
+  // --- MÁQUINA DE ESTADOS DO MOTOR DA PORTA ---
+  // Esta parte roda continuamente, verificando o estado da porta
+  // sem usar 'delay()' ou 'while()', permitindo que o WebSocket
+  // e o servidor web continuem funcionando.
+
+  switch (estadoPorta) {
+    
+    case ESTADO_PORTA_ABRINDO:
+      // Se estamos abrindo, verificamos o sensor de porta aberta
+      if (digitalRead(SENSOR_PORTA_ABERTA) == LOW) { // LOW = Pressionado
+        // Chegamos ao fim!
+        Serial.println("Fim de curso: Porta totalmente aberta.");
+        pararPorta();
+        estadoPorta = ESTADO_PORTA_PARADO;
+        // Avisa todos os clientes que a porta terminou de abrir
+        ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"ABERTA\"}"); 
+      } else {
+        // Ainda não chegamos, continuar abrindo
+        abrirPortaLogica(velocidadeMotorPorta);
+      }
+      break;
+
+    case ESTADO_PORTA_FECHANDO:
+      // Se estamos fechando, verificamos o sensor de porta fechada
+      if (digitalRead(SENSOR_PORTA_FECHADA) == LOW) { // LOW = Pressionado
+        // Chegamos ao fim!
+        Serial.println("Fim de curso: Porta totalmente fechada.");
+        pararPorta();
+        estadoPorta = ESTADO_PORTA_PARADO;
+        // Avisa todos os clientes que a porta terminou de fechar
+        ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"FECHADA\"}");
+      } else {
+        // Ainda não chegamos, continuar fechando
+        fecharPortaLogica(velocidadeMotorPorta);
+      }
+      break;
+
+    case ESTADO_PORTA_PARADO:
+      // Não faz nada. O motor já está parado.
+      break;
+  }
+  // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 }
 
 // Função auxiliar para obter informações de uma rota específica
