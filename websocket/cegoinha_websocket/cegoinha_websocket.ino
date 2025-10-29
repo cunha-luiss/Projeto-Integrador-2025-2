@@ -1613,4 +1613,44 @@ String getRotaInfo(size_t indice) {
   }
   
   return info;
+  #include <WiFi.h>
+#include <WebSocketsServer.h>
+
+// 📶 Rede criada pelo ESP32
+const char* ssid = "192.168.4.1";   // 👈 coloque aqui o nome exato da rede (sem "http://")
+const char* password = "cegoinha123";
+
+WebSocketsServer webSocket = WebSocketsServer(81);
+float distancia = 0.0;
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.softAP(ssid, password);
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("Rede criada! Conecte-se a: ");
+  Serial.println(ssid);
+  Serial.print("IP do ESP32: ");
+  Serial.println(myIP); // Deve ser 192.168.4.1
+
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+  Serial.println("Servidor WebSocket iniciado na porta 81");
+}
+
+void loop() {
+  webSocket.loop();
+
+  // 🔄 Simulação do carrinho se movendo
+  distancia += 0.05; // 5 cm
+  String json = "{\"distancia\": " + String(distancia, 2) + "}";
+  webSocket.broadcastTXT(json);
+
+  delay(500); // Atualiza a cada meio segundo
+}
+
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+  // Pode deixar vazio
+}
+
 }
