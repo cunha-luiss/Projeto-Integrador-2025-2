@@ -68,16 +68,7 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
    - `Tools → Board → ESP32 Arduino → ESP32 Dev Module`
    - (ou o modelo específico da sua placa)
 
-2. **Configure as opções:**
-   - **Upload Speed:** 921600
-   - **CPU Frequency:** 240MHz (WiFi/BT)
-   - **Flash Frequency:** 80MHz
-   - **Flash Mode:** QIO
-   - **Flash Size:** 4MB (escolha conforme sua placa)
-   - **Partition Scheme:** Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
-   - **Core Debug Level:** None (ou "Info" para debug)
-
-3. **Selecione a porta COM:**
+2. **Selecione a porta COM:**
    - `Tools → Port → COMx` (Windows)
    - ou `/dev/ttyUSBx` (Linux/Mac)
 
@@ -216,94 +207,9 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
 
 ---
 
-## 🐛 Resolução de Problemas
-
-### Problema: Não compila
-
-**Erro:** `'mensagemRecebida' was not declared in this scope`
-
-**Solução:** O código já contém a declaração forward necessária. Se o erro persistir:
-1. Feche e reabra o Arduino IDE
-2. Verifique se todas as bibliotecas estão instaladas
-3. Selecione a placa ESP32 correta
-
----
-
-### Problema: Upload falha
-
-**Erro:** `Failed to connect to ESP32`
-
-**Soluções:**
-1. Segure o botão **BOOT** no ESP32 durante o upload
-2. Reduza a velocidade de upload para 115200
-3. Verifique se a porta COM está correta
-4. Tente outro cabo USB (alguns cabos são apenas para carga)
-
----
-
-### Problema: WiFi não aparece
-
-**Soluções:**
-1. Verifique o Monitor Serial - deve mostrar "WiFi AP iniciado"
-2. Pressione o botão RESET no ESP32
-3. Aguarde 30 segundos após ligar
-4. Verifique se não há outra rede com o mesmo nome
-
----
-
-### Problema: Página não carrega
-
-**Soluções:**
-1. Confirme que está conectado ao WiFi "cegoinha"
-2. Digite exatamente: `http://192.168.4.1` (sem "s" no http)
-3. Pressione `Ctrl + F5` para forçar atualização
-4. Tente em modo anônimo/privado do navegador
-5. Limpe o cache do navegador
-
----
-
-### Problema: WebSocket não conecta
-
-**Sintomas:** Status mostra "🔴 Desconectado"
-
-**Soluções:**
-1. Abra o console do navegador (F12) e verifique os erros
-2. Confirme que o Monitor Serial mostra "WebSocket client #X connected"
-3. Desabilite temporariamente firewall/antivírus
-4. Tente outro navegador (Chrome/Edge recomendados)
-
----
-
-### Problema: Botões não funcionam
-
-**Soluções:**
-1. Verifique se o status está "🟢 Conectado"
-2. Abra o console (F12) e procure erros em vermelho
-3. Faça upload do código novamente
-4. Limpe o cache (Ctrl + Shift + Delete)
-
----
-
-### Problema: Mapas não aparecem nos cards
-
-**Sintomas:** Cards de rotas anteriores aparecem em branco/rosa
-
-**Soluções:**
-1. Pressione `Ctrl + F5` para forçar atualização
-2. Verifique se há rotas enviadas (envie uma rota de teste)
-3. Abra o console (F12) e procure por erros de SVG
-4. Refaça o upload do código
-
----
-
-Para mais detalhes de troubleshooting, consulte: `websocket/cegoinha_websocket/TROUBLESHOOTING.md`
-
----
-
 ## 📚 Documentação Adicional
 
 - **LITTLEFS_SYNC.md** - Detalhes do sistema de persistência
-- **TESTES.md** - Casos de teste e validação
 
 ---
 
@@ -355,7 +261,7 @@ Para problemas, dúvidas ou sugestões:
 
 ## 📜 Licença
 
-Este projeto está sob a licença especificada no arquivo LICENSE.
+Este projeto está sob a licença GNU AFFERO GENERAL PUBLIC LICENSE v3 especificada no arquivo LICENSE.
 
 ---
 
