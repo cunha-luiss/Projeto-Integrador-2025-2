@@ -1,0 +1,99 @@
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:#000;line-height:1.5;overflow-x:hidden}
+.main-container{width:100%;min-height:100vh;padding:20px;max-width:1400px;margin:0 auto}
+.header{padding:32px 0 20px 70px}
+.title,.section-title{font-size:32px;font-weight:400;margin-bottom:20px}
+.divider{width:calc(100% + 40px);height:5px;background:#313C41;margin:20px -20px}
+.divider-top{margin-top:0}
+.section{padding:20px 0;margin-bottom:20px;position:relative}
+.section-subtitle{font-size:20px;font-weight:400;text-align:right;position:absolute;top:20px;right:100px}
+.section-header{margin-bottom:30px;position:relative}
+.rotas-anteriores,.consumo-carga,.status-carrinho{padding-left:100px}
+.rotas-grid{display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+.card-rota{width:491px;height:534px;border-radius:10px;overflow:hidden;flex-shrink:0}
+.rota-header{background:#313C41;padding:10px 40px;display:flex;justify-content:space-between;align-items:center;border-radius:10px 10px 0 0;height:46px}
+.rota-name{font-size:32px;color:#F6F6F6}
+.rota-distance{font-size:24px;color:#F6F6F6}
+.rota-body{background:#C8C8C8;padding:20px;height:488px;border-radius:0 0 10px 10px}
+.rota-time,.rota-vmedia,.rota-consumo{font-size:24px;text-align:center;margin-bottom:8px}
+.rota-consumo{margin-bottom:15px}
+.mapa-container{width:100%;height:320px;margin-top:10px}
+.mapa-placeholder,.mapa-grande{background:#EC8A8A;border-radius:15px;width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mapa-text{font-size:32px;text-align:center;position:relative;z-index:2}
+.map-route,.map-route-large{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none}
+.truck-icon,.award-icon,.truck-icon-large,.award-icon-large{position:absolute;font-size:32px;z-index:3;transition:all .3s ease}
+.truck-icon-large,.award-icon-large{font-size:40px}
+.btn-rotas-limpar{margin-left:460px;margin-top:10px}
+.consumo-list{list-style:disc;padding-left:48px;font-size:32px}
+.consumo-list li{margin-bottom:8px}
+.status-grid{display:flex;gap:17px;flex-wrap:wrap}
+.status-card{width:350px;height:127px;border-radius:10px;overflow:hidden;flex-shrink:0}
+.status-header{background:#313C41;color:#F6F6F6;font-size:30px;text-align:center;padding:8px;border-radius:10px 10px 0 0;height:49px;display:flex;align-items:center;justify-content:center}
+.status-value{background:#C8C8C8;font-size:40px;text-align:center;padding:20px;border-radius:0 0 10px 10px;height:78px;display:flex;align-items:center;justify-content:center}
+.main-content{display:grid;grid-template-columns:1fr 1fr;gap:50px;padding:0 80px;margin-bottom:30px}
+.enviar-rota,.trajetoria{padding:0}
+.elementos-adicionados{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;min-height:80px}
+.elementos-adicionados:empty::before{content:"Adicione elementos para criar uma rota";display:flex;align-items:center;justify-content:center;height:80px;color:#999;font-size:16px;font-style:italic}
+.elemento-item{height:77px;border-radius:0 10px 10px 0;display:flex;align-items:center;padding:0 10px 0 15px;position:relative}
+.elemento-item.distancia{background-color:#31A208;width:213px}
+.elemento-item.rotacao{background-color:#0026B8;width:399px}
+.elemento-content{flex:1;margin-right:10px}
+.elemento-label,.elemento-label-small,.elemento-value{font-size:18px;color:#F6F6F6;line-height:1.3}
+.elemento-label-small{margin:0}
+.btn-remover,.btn-direcao,.btn-add{width:30px;height:30px;min-width:30px;background:#F6F6F6;border:none;border-radius:3px;color:#000;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn-remover{font-size:28px;line-height:1}
+.btn-direcao{font-size:16px;margin-left:5px}
+.btn-add{font-size:22px;position:absolute;left:10px;top:50%;transform:translateY(-50%)}
+.elemento-numero{position:absolute;right:8px;bottom:5px;font-size:12px;color:#F6F6F6}
+.adicionar-elementos{display:flex;gap:20px;margin-bottom:30px;flex-wrap:wrap}
+.adicionar-card{border-radius:10px;padding:10px;position:relative;height:77px;background:#C8C8C8}
+.adicionar-card.rotacao-add{width:399px}
+.adicionar-card.distancia-add{width:213px}
+.add-label,.add-label-top,.add-label-left{font-size:18px;position:absolute}
+.add-label{top:10px;left:50px}
+.add-label-top{top:8px;right:50px}
+.add-label-left{left:50px;top:8px}
+.add-input{position:absolute;bottom:15px;left:50px;right:50px;background:transparent;border:none;border-bottom:1px solid #666;font-size:18px;outline:none;padding:3px 5px}
+.distancia-add .add-input{right:15px}
+.add-input-graus{right:130px;width:80px}
+.add-select-direcao{position:absolute;bottom:15px;right:10px;width:115px;height:30px;background:#F6F6F6;border:1px solid #666;border-radius:5px;font-size:16px;outline:none;padding:3px 8px;cursor:pointer}
+.add-select-direcao:focus{border-color:#0026B8;box-shadow:0 0 3px rgba(0,38,184,.3)}
+.acoes{display:flex;gap:15px}
+.btn-concluir,.btn-limpar{color:#F6F6F6;font-size:18px;padding:12px 30px;border:none;border-radius:10px;cursor:pointer}
+.btn-concluir{background:#31A208}
+.btn-limpar{background:#A21508}
+.trajetoria-card{background:#0026B8;border-radius:20px;padding:30px;color:#F6F6F6}
+.trajetoria-info{font-size:18px;color:#F6F6F6;margin-bottom:8px}
+.mapa-grande{max-width:427px;height:358px;margin:20px auto 0}
+.status-percurso{padding-left:80px;clear:both}
+.status-percurso-section{margin-top:40px}
+.status-percurso-grid{display:grid;grid-template-columns:repeat(2,234px);gap:32px}
+.status-percurso-card{width:234px;height:161px;border-radius:10px;overflow:hidden}
+.status-percurso-card .status-header{height:65px;padding:12px}
+.status-percurso-card .status-value{font-size:30px;height:96px}
+button:hover{opacity:.85;transition:opacity .2s}
+button:active{transform:scale(.98)}
+@media (max-width:1400px){
+.main-content{grid-template-columns:1fr}
+.status-percurso-grid{grid-template-columns:repeat(2,234px)}
+}
+@media (max-width:1100px){
+.rotas-grid{justify-content:center}
+}
+@media (max-width:768px){
+.header{padding:20px 0 20px 20px}
+.rotas-anteriores,.consumo-carga,.status-carrinho,.status-percurso{padding-left:20px}
+.main-content{padding:0 20px}
+.card-rota{width:100%;max-width:491px}
+.adicionar-elementos{flex-direction:column}
+.adicionar-card{width:100%!important;max-width:399px}
+.elemento-item{width:100%!important;max-width:399px}
+.status-grid{justify-content:center}
+.status-percurso-grid{grid-template-columns:repeat(auto-fit,234px);justify-content:center}
+.section-subtitle{position:static;text-align:center;margin-top:10px}
+}
+.section-porta{padding-left:100px}
+@media (max-width:768px){
+.section-porta{padding-left:20px}
+}
+#status-porta-info{margin-top:15px;font-size:18px;color:#313C41;font-weight:500}
