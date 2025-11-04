@@ -30,7 +30,8 @@ const unsigned long intervaloCalculo = 100; // Calcular velocidade a cada 100ms
 float velocidadeAtual = 0.0;                // Velocidade em cm/s
 
 // --- Variáveis para Cálculo de ETA ---
-float distanciaDestino = 0.0; // Distância até o destino em cm
+float distanciaDestino = 0.0;    // Distância total até o destino em cm
+float distanciaPercorrida = 0.0; // Distância acumulada percorrida desde o início da rota em cm
 unsigned long ultimoTempoCalculoETA = 0;
 const unsigned long intervaloCalculoETA = 500; // Calcular ETA a cada 500ms
 float etaSegundos = 0.0;                       // ETA em segundos
@@ -305,6 +306,9 @@ void calcularEEnviarVelocidade()
     // Calcula a distância percorrida (em cm)
     float distancia = revolucoes * PI * DIAMETRO_RODA;
 
+    // Acumula a distância percorrida para cálculo do ETA
+    distanciaPercorrida += abs(distancia);
+
     // Calcula a velocidade (cm/s)
     velocidadeAtual = distancia / tempoDecorrido;
 
@@ -333,6 +337,7 @@ void calcularEEnviarVelocidade()
 void definirDistanciaDestino(float distancia)
 {
   distanciaDestino = distancia;
+  distanciaPercorrida = 0.0; // Reseta a distância percorrida ao definir novo destino
   Serial.printf("Distância até destino definida: %.2f cm\n", distanciaDestino);
 }
 
@@ -344,22 +349,31 @@ void calcularEEnviarETA()
   // Verifica se já passou o intervalo de cálculo do ETA
   if (tempoAtual - ultimoTempoCalculoETA >= intervaloCalculoETA)
   {
-    // Se não há distância definida ou velocidade é muito baixa, não calcula
-    if (distanciaDestino <= 0.0 || abs(velocidadeAtual) < 0.1)
+    // Calcula a distância restante até o destino
+    float distanciaRestante = distanciaDestino - distanciaPercorrida;
+    
+    // Garante que a distância restante não seja negativa
+    if (distanciaRestante < 0.0)
+    {
+      distanciaRestante = 0.0;
+    }
+
+    // Se não há distância restante ou velocidade é muito baixa, não calcula
+    if (distanciaRestante <= 0.0 || abs(velocidadeAtual) < 0.1)
     {
       etaSegundos = 0.0;
     }
     else
     {
-      // Calcula o ETA em segundos: tempo = distância / velocidade
-      etaSegundos = distanciaDestino / abs(velocidadeAtual);
+      // Calcula o ETA em segundos: tempo = distância restante / velocidade
+      etaSegundos = distanciaRestante / abs(velocidadeAtual);
     }
 
     // Envia o ETA via WebSocket
     DynamicJsonDocument doc(256);
     doc["channel"] = "ETA";
     doc["value"] = etaSegundos;
-    doc["distancia"] = distanciaDestino;
+    doc["distancia"] = distanciaRestante;
     doc["velocidade"] = abs(velocidadeAtual);
 
     String jsonString;
@@ -369,8 +383,8 @@ void calcularEEnviarETA()
     // Debug no Serial
     if (etaSegundos > 0)
     {
-      Serial.printf("ETA: %.2f segundos (Distância: %.2f cm, Velocidade: %.2f cm/s)\n",
-                    etaSegundos, distanciaDestino, abs(velocidadeAtual));
+      Serial.printf("ETA: %.2f segundos (Distância restante: %.2f cm, Velocidade: %.2f cm/s)\n",
+                    etaSegundos, distanciaRestante, abs(velocidadeAtual));
     }
 
     // Atualiza o tempo da última leitura
