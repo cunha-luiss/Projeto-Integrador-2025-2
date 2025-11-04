@@ -14,27 +14,22 @@ const char* password = "cegoinha123";
 
 // --- Pinos do Motor da Porta (L298N) ---
 // Mude estes pinos conforme a sua ligação real
-#define PIN_IN1 25
-#define PIN_IN2 26
-#define PIN_ENA 27 // Pino para controle de velocidade (PWM)
+#define PIN_IN1 36
+#define PIN_IN2 37
+// Pino ENA deve estar conectado direto ao 5V ou 12V para velocidade máxima
 
-// --- Pinos dos Sensores da Porta (Fim de Curso) ---
-// Mude estes pinos conforme a sua ligação real
-#define SENSOR_PORTA_ABERTA 34
-#define SENSOR_PORTA_FECHADA 35
-
-// --- Configuração do PWM da Porta ---
-int freqPWM_Porta = 5000;
-int canalPWM_Porta = 0; // Canal PWM 0 (verificar se não há conflito com PWM das rodas)
-int resolucaoPWM_Porta = 8; // 8 bits (0-255)
-int velocidadeMotorPorta = 200; // Velocidade de 0-255
+// --- Configuração de Tempo da Porta ---
+#define TEMPO_ABERTURA_MS 3000    // Tempo para abrir completamente (3 segundos)
+#define TEMPO_FECHAMENTO_MS 3000  // Tempo para fechar completamente (3 segundos)
 
 // --- Controle de Estado da Porta (Lógica Não-Bloqueante) ---
 #define ESTADO_PORTA_PARADO 0
 #define ESTADO_PORTA_ABRINDO 1
 #define ESTADO_PORTA_FECHANDO 2
+#define ESTADO_PORTA_SEGURANDO 3  // Novo estado: segurar posição
 
 int estadoPorta = ESTADO_PORTA_PARADO; // Estado atual da porta
+unsigned long tempoInicioMovimento = 0; // Marca quando o movimento começou
 
 // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
@@ -193,58 +188,28 @@ void enviarRotasParaCliente(AsyncWebSocketClient *client) {
 // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
 // --- Funções de Baixo Nível do Motor da Porta ---
 
-// Para o motor (freio)
+// Para o motor completamente (desliga)
 void pararPorta() {
   digitalWrite(PIN_IN1, LOW);
   digitalWrite(PIN_IN2, LOW);
-  // Use ESP32 LEDC API when available, otherwise fall back to analogWrite
-#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
-  #if ESP_ARDUINO_VERSION_MAJOR >= 3
-    // ESP32 Arduino Core 3.x: ledcWrite takes pin directly
-    ledcWrite(PIN_ENA, 0);
-  #else
-    // ESP32 Arduino Core 2.x: ledcWrite takes channel
-    ledcWrite(canalPWM_Porta, 0);
-  #endif
-#else
-  analogWrite(PIN_ENA, 0);
-#endif
 }
 
 // Gira em um sentido (Ex: Abrir)
-void abrirPortaLogica(int velocidade) { 
+void abrirPortaLogica() { 
   digitalWrite(PIN_IN1, HIGH);
   digitalWrite(PIN_IN2, LOW);
-  // Use ESP32 LEDC API when available, otherwise fall back to analogWrite
-#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
-  #if ESP_ARDUINO_VERSION_MAJOR >= 3
-    // ESP32 Arduino Core 3.x: ledcWrite takes pin directly
-    ledcWrite(PIN_ENA, velocidade);
-  #else
-    // ESP32 Arduino Core 2.x: ledcWrite takes channel
-    ledcWrite(canalPWM_Porta, velocidade);
-  #endif
-#else
-  analogWrite(PIN_ENA, velocidade);
-#endif
 }
 
 // Gira no outro sentido (Ex: Fechar)
-void fecharPortaLogica(int velocidade) {
+void fecharPortaLogica() {
   digitalWrite(PIN_IN1, LOW);
   digitalWrite(PIN_IN2, HIGH);
-  // Use ESP32 LEDC API when available, otherwise fall back to analogWrite
-#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
-  #if ESP_ARDUINO_VERSION_MAJOR >= 3
-    // ESP32 Arduino Core 3.x: ledcWrite takes pin directly
-    ledcWrite(PIN_ENA, velocidade);
-  #else
-    // ESP32 Arduino Core 2.x: ledcWrite takes channel
-    ledcWrite(canalPWM_Porta, velocidade);
-  #endif
-#else
-  analogWrite(PIN_ENA, velocidade);
-#endif
+}
+
+// Segura a posição (freio do motor - ambos HIGH)
+void segurarPosicaoPorta() {
+  digitalWrite(PIN_IN1, HIGH);
+  digitalWrite(PIN_IN2, HIGH);
 }
 // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
@@ -462,28 +427,18 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
 
     // Processar comando para ABRIR A PORTA
     else if (strcmp(channel, "ABRIR") == 0) {
-      // Verifica se a porta já não está aberta (sensor HIGH = não pressionado)
-      if (digitalRead(SENSOR_PORTA_ABERTA) == HIGH) { 
-        Serial.println("Comando: ABRIR. Iniciando abertura...");
-        estadoPorta = ESTADO_PORTA_ABRINDO; // Muda o estado
-        client->text("{\"status\":\"ok\",\"message\":\"Comando 'ABRIR' recebido. Abrindo...\"}");
-      } else {
-        Serial.println("Comando: ABRIR. Porta já está aberta.");
-        client->text("{\"status\":\"info\",\"message\":\"Porta ja esta aberta.\"}");
-      }
+      Serial.println("Comando: ABRIR. Iniciando abertura...");
+      estadoPorta = ESTADO_PORTA_ABRINDO; // Muda o estado
+      tempoInicioMovimento = millis(); // Marca o tempo de início
+      client->text("{\"status\":\"ok\",\"message\":\"Comando 'ABRIR' recebido. Abrindo...\"}");
     }
 
     // Processar comando para FECHAR A PORTA
     else if (strcmp(channel, "FECHAR") == 0) {
-      // Verifica se a porta já não está fechada (sensor HIGH = não pressionado)
-      if (digitalRead(SENSOR_PORTA_FECHADA) == HIGH) { 
-        Serial.println("Comando: FECHAR. Iniciando fechamento...");
-        estadoPorta = ESTADO_PORTA_FECHANDO; // Muda o estado
-        client->text("{\"status\":\"ok\",\"message\":\"Comando 'FECHAR' recebido. Fechando...\"}");
-      } else {
-        Serial.println("Comando: FECHAR. Porta já está fechada.");
-        client->text("{\"status\":\"info\",\"message\":\"Porta ja esta fechada.\"}");
-      }
+      Serial.println("Comando: FECHAR. Iniciando fechamento...");
+      estadoPorta = ESTADO_PORTA_FECHANDO; // Muda o estado
+      tempoInicioMovimento = millis(); // Marca o tempo de início
+      client->text("{\"status\":\"ok\",\"message\":\"Comando 'FECHAR' recebido. Fechando...\"}");
     }
 
     // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
@@ -537,32 +492,12 @@ void setup() {
   // --- Setup do Motor ---
   pinMode(PIN_IN1, OUTPUT);
   pinMode(PIN_IN2, OUTPUT);
-  // Configura o PWM para o pino ENA
-  // Use ESP32 LEDC API when available, otherwise use analogWrite on other boards
-#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
-  #if ESP_ARDUINO_VERSION_MAJOR >= 3
-    // ESP32 Arduino Core 3.x and later: use new API
-    ledcAttach(PIN_ENA, freqPWM_Porta, resolucaoPWM_Porta);
-  #else
-    // ESP32 Arduino Core 2.x and earlier: use old API
-    ledcSetup(canalPWM_Porta, freqPWM_Porta, resolucaoPWM_Porta);
-    ledcAttachPin(PIN_ENA, canalPWM_Porta);
-  #endif
-#else
-  // On non-ESP32 platforms (e.g., AVR, ESP8266) use analogWrite. Frequency/resolution
-  // may differ depending on the core. Ensure the pin supports PWM on your board.
-  pinMode(PIN_ENA, OUTPUT);
-#endif
+  // IMPORTANTE: Conecte o pino ENA do L298N direto ao VCC (5V ou 12V)
+  // para que o motor sempre tenha potência máxima
+  
   // Garante que o motor comece parado
   pararPorta(); 
   Serial.println("✅ Driver L298N (Porta) configurado.");
-
-  // --- Setup dos Sensores ---
-  // INPUT_PULLUP: O pino fica em HIGH (1) por padrão.
-  // Quando o sensor é pressionado, ele aterra o pino, que lê LOW (0).
-  pinMode(SENSOR_PORTA_ABERTA, INPUT_PULLUP);
-  pinMode(SENSOR_PORTA_FECHADA, INPUT_PULLUP);
-  Serial.println("✅ Sensores Fim de Curso (Porta) configurados.");
   Serial.println("------------------------------\n");
   // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
   
@@ -617,37 +552,50 @@ void loop() {
   switch (estadoPorta) {
     
     case ESTADO_PORTA_ABRINDO:
-      // Se estamos abrindo, verificamos o sensor de porta aberta
-      if (digitalRead(SENSOR_PORTA_ABERTA) == LOW) { // LOW = Pressionado
-        // Chegamos ao fim!
-        Serial.println("Fim de curso: Porta totalmente aberta.");
-        pararPorta();
-        estadoPorta = ESTADO_PORTA_PARADO;
-        // Avisa todos os clientes que a porta terminou de abrir
-        ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"ABERTA\"}"); 
-      } else {
-        // Ainda não chegamos, continuar abrindo
-        abrirPortaLogica(velocidadeMotorPorta);
+      {
+        unsigned long tempoDecorrido = millis() - tempoInicioMovimento;
+        
+        // Verifica se o tempo de abertura foi atingido
+        if (tempoDecorrido >= TEMPO_ABERTURA_MS) {
+          Serial.println("Tempo de abertura atingido. Segurando posição.");
+          segurarPosicaoPorta(); // Segura a posição
+          estadoPorta = ESTADO_PORTA_SEGURANDO;
+          ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"ABERTA\"}");
+        }
+        // Caso contrário, continua abrindo
+        else {
+          abrirPortaLogica();
+        }
       }
       break;
 
     case ESTADO_PORTA_FECHANDO:
-      // Se estamos fechando, verificamos o sensor de porta fechada
-      if (digitalRead(SENSOR_PORTA_FECHADA) == LOW) { // LOW = Pressionado
-        // Chegamos ao fim!
-        Serial.println("Fim de curso: Porta totalmente fechada.");
-        pararPorta();
-        estadoPorta = ESTADO_PORTA_PARADO;
-        // Avisa todos os clientes que a porta terminou de fechar
-        ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"FECHADA\"}");
-      } else {
-        // Ainda não chegamos, continuar fechando
-        fecharPortaLogica(velocidadeMotorPorta);
+      {
+        unsigned long tempoDecorrido = millis() - tempoInicioMovimento;
+        
+        // Verifica se o tempo de fechamento foi atingido
+        if (tempoDecorrido >= TEMPO_FECHAMENTO_MS) {
+          Serial.println("Tempo de fechamento atingido. Segurando posição.");
+          segurarPosicaoPorta(); // Segura a posição
+          estadoPorta = ESTADO_PORTA_SEGURANDO;
+          ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"FECHADA\"}");
+        }
+        // Caso contrário, continua fechando
+        else {
+          fecharPortaLogica();
+        }
       }
       break;
 
+    case ESTADO_PORTA_SEGURANDO:
+      // Mantém a posição ativa (freio do motor)
+      // O motor fica energizado segurando a porta na posição
+      segurarPosicaoPorta();
+      break;
+
     case ESTADO_PORTA_PARADO:
-      // Não faz nada. O motor já está parado.
+      // Motor completamente desligado
+      pararPorta();
       break;
   }
   // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
