@@ -4,11 +4,32 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <vector>
+// === INÍCIO - CÓDIGO DE CONTROLE DOS MOTORES  ===
 
+
+// --- Pinos de Controle do Chassi  ---
+[cite_start]// [cite: 223]
+// Motor Esquerdo (Motor A - L298N U2, Pinos OUT1/OUT2)
+#define PINO_MOTOR_ESQ_IN1 32
+#define PINO_MOTOR_ESQ_IN2 33
+#define PINO_MOTOR_ESQ_VEL 27 // ENA (PWM)
+
+// Motor Direito (Motor B - L298N U2, Pinos OUT3/OUT4)
+#define PINO_MOTOR_DIR_IN3 25
+#define PINO_MOTOR_DIR_IN4 26
+#define PINO_MOTOR_DIR_VEL 14 // ENB (PWM)
+
+// Velocidade padrão para o teste de demonstração (0-255)
+#define VELOCIDADE_DEMO 200 
+
+
+// === FIM - CÓDIGO DE CONTROLE DOS MOTORES ===
 const char* ssid = "cegoinha";
 const char* password = "cegoinha123";
 
 #define ROTAS_FILE "/rotas.json"
+
+
 
 // Estrutura para armazenar informações do dispositivo conectado
 struct DispositivoConectado {
@@ -1422,17 +1443,37 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
         ComandoRota comando;
         comando.tipo = comandoObj["tipo"].as<String>();
         
-        if (comando.tipo == "MOVE") {
-          comando.valor = comandoObj["valor"];
-          Serial.printf("  - MOVE: %d\n", comando.valor);
-        } else if (comando.tipo == "ROTATE") {
-          comando.valor = comandoObj["angulo"];
-          comando.direcao = comandoObj["direcao"].as<String>();
-          Serial.printf("  - ROTATE: %d° para %s\n", comando.valor, comando.direcao.c_str());
-        }
+      if (comando.tipo == "MOVE") {
+        comando.valor = comandoObj["valor"];
+        // Serial.printf("  - MOVE: %d\n", comando.valor); // << Linha Original
         
-        novaRota.comandos.push_back(comando);
+        // --- INÍCIO: Modificação para Teste de Demo ---
+        Serial.printf("  -> EXECUTANDO MOVE: %d (por 1.5s)\n", comando.valor);
+        andarFrente(VELOCIDADE_DEMO);
+        delay(1500); // Roda por 1.5 segundos SÓ PARA O TESTE
+        pararCarrinho();
+        Serial.println("  -> MOVE Concluído.");
+        // --- FIM: Modificação para Teste de Demo ---
+
+      } else if (comando.tipo == "ROTATE") {
+        comando.valor = comandoObj["angulo"];
+        comando.direcao = comandoObj["direcao"].as<String>();
+        // Serial.printf("  - ROTATE: %d° para %s\n", comando.valor, comando.direcao.c_str()); // << Linha Original
+
+        // --- INÍCIO: Modificação para Teste de Demo ---
+        Serial.printf("  -> EXECUTANDO ROTATE: %d° para %s (por 0.5s)\n", comando.valor, comando.direcao.c_str());
+        if (comando.direcao == "direita") {
+          virarDireitaEixo(VELOCIDADE_DEMO);
+        } else {
+          virarEsquerdaEixo(VELOCIDADE_DEMO);
+        }
+        delay(500); // Roda por 0.5 segundos SÓ PARA O TESTE
+        pararCarrinho();
+        Serial.println("  -> ROTATE Concluído.");
+        // --- FIM: Modificação para Teste de Demo ---
       }
+      
+      novaRota.comandos.push_back(comando);
       
       // Adicionar rota ao armazenamento
       rotasArmazenadas.push_back(novaRota);
@@ -1532,6 +1573,20 @@ ws.textAll(String(value));
 void setup() {
   // Serial port for debugging purposes
   Serial.begin(115200);
+
+  // --- INÍCIO: Configuração dos Pinos do Motor ---
+  Serial.println("--- Configurando Pinos dos Motores ---");
+  pinMode(PINO_MOTOR_ESQ_IN1, OUTPUT);
+  pinMode(PINO_MOTOR_ESQ_IN2, OUTPUT);
+  pinMode(PINO_MOTOR_ESQ_VEL, OUTPUT);
+  pinMode(PINO_MOTOR_DIR_IN3, OUTPUT);
+  pinMode(PINO_MOTOR_DIR_IN4, OUTPUT);
+  pinMode(PINO_MOTOR_DIR_VEL, OUTPUT);
+  
+  // Garante que os motores comecem parados
+  pararCarrinho(); 
+  Serial.println("✅ Motores configurados e parados.");
+  // --- FIM: Configuração dos Pinos do Motor ---
   
   Serial.println("\n\n=================================");
   Serial.println("    CEGOINHA ESP32 - Iniciando");
@@ -1591,6 +1646,57 @@ void setup() {
 void loop() {
   ws.cleanupClients();
 }
+
+// === INÍCIO - FUNÇÕES DE MOVIMENTO  ===
+
+
+void pararCarrinho() {
+  digitalWrite(PINO_MOTOR_ESQ_IN1, LOW);
+  digitalWrite(PINO_MOTOR_ESQ_IN2, LOW);
+  digitalWrite(PINO_MOTOR_DIR_IN3, LOW);
+  digitalWrite(PINO_MOTOR_DIR_IN4, LOW);
+  // Define a velocidade como 0
+  analogWrite(PINO_MOTOR_ESQ_VEL, 0); 
+  analogWrite(PINO_MOTOR_DIR_VEL, 0);
+}
+
+void andarFrente(int velocidade) {
+  // Motor Esquerdo para frente
+  digitalWrite(PINO_MOTOR_ESQ_IN1, HIGH);
+  digitalWrite(PINO_MOTOR_ESQ_IN2, LOW);
+  // Motor Direito para frente
+  digitalWrite(PINO_MOTOR_DIR_IN3, HIGH);
+  digitalWrite(PINO_MOTOR_DIR_IN4, LOW);
+  // Define a velocidade
+  analogWrite(PINO_MOTOR_ESQ_VEL, velocidade);
+  analogWrite(PINO_MOTOR_DIR_VEL, velocidade);
+}
+
+void virarDireitaEixo(int velocidade) {
+  // Motor Esquerdo para frente
+  digitalWrite(PINO_MOTOR_ESQ_IN1, HIGH);
+  digitalWrite(PINO_MOTOR_ESQ_IN2, LOW);
+  // Motor Direito para TRÁS
+  digitalWrite(PINO_MOTOR_DIR_IN3, LOW);
+  digitalWrite(PINO_MOTOR_DIR_IN4, HIGH);
+  // Define a velocidade
+  analogWrite(PINO_MOTOR_ESQ_VEL, velocidade);
+  analogWrite(PINO_MOTOR_DIR_VEL, velocidade);
+}
+
+void virarEsquerdaEixo(int velocidade) {
+  // Motor Esquerdo para TRÁS
+  digitalWrite(PINO_MOTOR_ESQ_IN1, LOW);
+  digitalWrite(PINO_MOTOR_ESQ_IN2, HIGH);
+  // Motor Direito para FRENTE
+  digitalWrite(PINO_MOTOR_DIR_IN3, HIGH);
+  digitalWrite(PINO_MOTOR_DIR_IN4, LOW);
+  // Define a velocidade
+  analogWrite(PINO_MOTOR_ESQ_VEL, velocidade);
+  analogWrite(PINO_MOTOR_DIR_VEL, velocidade);
+}
+
+// === FIM - FUNÇÕES DE MOVIMENTO ===
 
 // Função auxiliar para obter informações de uma rota específica
 String getRotaInfo(size_t indice) {
