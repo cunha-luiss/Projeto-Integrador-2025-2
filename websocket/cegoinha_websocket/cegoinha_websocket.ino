@@ -9,6 +9,17 @@ const char *ssid = "cegoinha";
 const char *password = "cegoinha123";
 
 #define ROTAS_FILE "/rotas.json"
+//andar
+
+// Define os pinos para o Motor A
+#define IN1 14
+#define IN2 27
+
+// Define os pinos para o Motor B
+#define IN3 26
+#define IN4 25
+
+
 
 // ===== INÍCIO: CÓDIGO DO ENCODER E VELOCIDADE =====
 
@@ -430,6 +441,68 @@ void initWebSocket()
   ws.onEvent(onEvent);
   server.addHandler(&ws);
 }
+//funcoes de andar
+void moverMotorA(int direcao) {
+  if (direcao == 1) {
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+  } else if (direcao == -1) {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+  } else {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, LOW);
+  }
+}
+
+/**
+ * Controla o Motor B
+ * direcao: 1 (frente), -1 (trás), 0 (parar/frear)
+ */
+void moverMotorB(int direcao) {
+  if (direcao == 1) {
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+  } else if (direcao == -1) {
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+  } else {
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, LOW);
+  }
+}
+
+// Função auxiliar para parar tudo
+void pararMotores() {
+  moverMotorA(0);
+  moverMotorB(0);
+}
+
+
+
+
+void executarRota(JsonArray elementosArray, Rota novaRota) {
+for (const auto &cmd : novaRota.comandos)
+      {
+        JsonObject elemObj = elementosArray.createNestedObject();
+        elemObj["tipo"] = (cmd.tipo == "MOVE") ? "distancia" : "rotacao";
+        elemObj["valor"] = cmd.valor;
+        elemObj["id"] = millis() + random(1000);
+        if (cmd.tipo == "ROTATE")
+        {
+          elemObj["direcao"] = cmd.direcao;
+        }
+        else if (cmd.tipo == "MOVE")
+        {
+          moverMotorB(1);
+          moverMotorA(1);
+          
+          delay(cmd.valor * 1000);
+          pararMotores();
+          delay(1000);
+        }
+      }
+}
 
 void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *mensagem, size_t len)
 {
@@ -583,7 +656,8 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
           elemObj["direcao"] = cmd.direcao;
         }
       }
-
+      
+      executarRota(elementosArray, novaRota);
       String notifString;
       serializeJson(notifDoc, notifString);
       ws.textAll(notifString);
@@ -710,7 +784,7 @@ void setup()
   if (!LittleFS.begin(true))
   {
     Serial.println("❌ Erro ao montar LittleFS");
-    Serial.println("⚠️ Sistema continuará sem persistência");
+    Serial.println("⚠ Sistema continuará sem persistência");
   }
   else
   {
@@ -792,6 +866,19 @@ void setup()
   Serial.println("Servidor Web iniciado!");
   Serial.println("Aguardando conexões...\n");
   Serial.println("=================================\n");
+
+
+
+
+
+
+  //andar
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+
 }
 
 void loop()
