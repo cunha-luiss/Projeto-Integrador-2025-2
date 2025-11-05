@@ -899,4 +899,16 @@ String getRotaInfo(size_t indice)
   }
 
   return info;
+ 
+float distancia = 0.0;
+
+void loop() {
+  // 🔄 Simulação do carrinho se movendo
+  distancia += 0.05; // 5 cm
+  String json = "{\"distancia\": " + String(distancia, 2) + "}";
+  webSocket.broadcastTXT(json);
+
+  delay(500); // Atualiza a cada meio segundo
+}
+
 }
