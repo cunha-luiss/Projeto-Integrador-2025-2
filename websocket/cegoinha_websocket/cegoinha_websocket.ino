@@ -333,7 +333,8 @@ void calcularEEnviarVelocidade()
     ws.textAll(jsonString);
 
     // Debug no Serial
-    Serial.printf("Velocidade: %.2f cm/s\n", abs(velocidadeAtual));
+    //DESCOMENTAR
+    //Serial.printf("Velocidade: %.2f cm/s\n", abs(velocidadeAtual));
 
     // Atualiza o tempo da última leitura
     ultimoTempoCalculo = tempoAtual;
@@ -353,6 +354,7 @@ void definirDistanciaDestino(float distancia)
 }
 
 // Função para calcular e enviar o ETA
+//DESCOMENTAR DPS
 void calcularEEnviarETA()
 {
   unsigned long tempoAtual = millis();
@@ -394,8 +396,8 @@ void calcularEEnviarETA()
     // Debug no Serial
     if (etaSegundos > 0)
     {
-      Serial.printf("ETA: %.2f segundos (Distância restante: %.2f cm, Velocidade: %.2f cm/s)\n",
-                    etaSegundos, distanciaRestante, abs(velocidadeAtual));
+      //Serial.printf("ETA: %.2f segundos (Distância restante: %.2f cm, Velocidade: %.2f cm/s)\n",
+      //              etaSegundos, distanciaRestante, abs(velocidadeAtual));
     }
 
     // Atualiza o tempo da última leitura
@@ -496,9 +498,19 @@ for (const auto &cmd : novaRota.comandos)
         {
           moverMotorB(1);
           moverMotorA(1);
-          
-          delay(cmd.valor * 1000);
+          Serial.printf("andou\n");
+
+          long int inicio = millis();
+
+          Serial.printf("esperemos 5 segudos\n");
+          while(millis() - inicio < cmd.valor*1000)
+          {
+            //Serial.printf("%ld",millis() - inicio);
+          }
+
           pararMotores();
+          Serial.printf("Paroooo\n\n\n\n\n\n\n\n\n\n\n");
+
           delay(1000);
         }
       }
