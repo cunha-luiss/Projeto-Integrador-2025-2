@@ -4,28 +4,41 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <vector>
+#include "driver/pcnt.h"
 
 const char *ssid = "cegoinha";
 const char *password = "cegoinha123";
 
 #define ROTAS_FILE "/rotas.json"
-//andar
+// andar
 
-// Define os pinos para o Motor A
-#define IN1 14
-#define IN2 27
+// Define os pinos para o Motor esquerdo
+#define FRENTE_ESQ 14
+#define TRAS_ESQ 27
+#define ENC_A_ESQ 34
+#define ENC_B_ESQ 35
 
-// Define os pinos para o Motor B
-#define IN3 26
-#define IN4 25
+// Define os pinos para o Motor direito
+#define FRENTE_DIR 26
+#define TRAS_DIR 25
+#define ENC_A_DIR 33
+#define ENC_B_DIR 32
 
+// para contar pulsos
+volatile int64_t total_pulsos_esq = 0;
+volatile int64_t total_pulsos_dir = 0;
 
+// --- "Bandeiras" (Flags) de Meta ---
+volatile bool meta_esq_atingida = false;
+volatile bool meta_dir_atingida = false;
+
+int64_t META_PULSOS = 0;
+
+// --- Variáveis para o Timer de Impressão ---
+unsigned long tempoPrintAnterior = 0;
+const unsigned long intervaloPrint = 250; // Imprime a cada 250ms (4x por segundo)
 
 // ===== INÍCIO: CÓDIGO DO ENCODER E VELOCIDADE =====
-
-// --- Pinos do Encoder ---
-#define ENCODER_PIN_A 35 // IO35 conectado ao OUT A do encoder
-#define ENCODER_PIN_B 34 // IO34 conectado ao OUT B do encoder
 
 // --- Parâmetros do Motor e Encoder ---
 #define PULSOS_POR_REVOLUCAO 20.0 // Número de pulsos por revolução do encoder (ajuste conforme seu motor)
@@ -53,8 +66,8 @@ float etaSegundos = 0.0;                       // ETA em segundos
 
 // --- Pinos do Motor da Porta (L298N) ---
 // Mude estes pinos conforme a sua ligação real
-#define PIN_IN1 36
-#define PIN_IN2 37
+#define PIN_FRENTE_ESQ 36
+#define PIN_TRAS_ESQ 37
 // Pino ENA deve estar conectado direto ao 5V ou 12V para velocidade máxima
 
 // --- Configuração de Tempo da Porta ---
@@ -248,51 +261,33 @@ void enviarRotasParaCliente(AsyncWebSocketClient *client)
 // Para o motor completamente (desliga)
 void pararPorta()
 {
-  digitalWrite(PIN_IN1, LOW);
-  digitalWrite(PIN_IN2, LOW);
+  digitalWrite(PIN_FRENTE_ESQ, LOW);
+  digitalWrite(PIN_TRAS_ESQ, LOW);
 }
 
 // Gira em um sentido (Ex: Abrir)
 void abrirPortaLogica()
 {
-  digitalWrite(PIN_IN1, HIGH);
-  digitalWrite(PIN_IN2, LOW);
+  digitalWrite(PIN_FRENTE_ESQ, HIGH);
+  digitalWrite(PIN_TRAS_ESQ, LOW);
 }
 
 // Gira no outro sentido (Ex: Fechar)
 void fecharPortaLogica()
 {
-  digitalWrite(PIN_IN1, LOW);
-  digitalWrite(PIN_IN2, HIGH);
+  digitalWrite(PIN_FRENTE_ESQ, LOW);
+  digitalWrite(PIN_TRAS_ESQ, HIGH);
 }
 
 // Segura a posição (freio do motor - ambos HIGH)
 void segurarPosicaoPorta()
 {
-  digitalWrite(PIN_IN1, HIGH);
-  digitalWrite(PIN_IN2, HIGH);
+  digitalWrite(PIN_FRENTE_ESQ, HIGH);
+  digitalWrite(PIN_TRAS_ESQ, HIGH);
 }
 // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
 // ===== INÍCIO: FUNÇÕES DO ENCODER =====
-
-// Função de interrupção para o encoder (canal A)
-void IRAM_ATTR encoderISR()
-{
-  // Lê o estado do canal B para determinar a direção
-  int estadoB = digitalRead(ENCODER_PIN_B);
-
-  // Se B está HIGH quando A muda, está girando para frente
-  // Se B está LOW quando A muda, está girando para trás
-  if (estadoB == HIGH)
-  {
-    contadorPulsos++;
-  }
-  else
-  {
-    contadorPulsos--;
-  }
-}
 
 // Função para calcular e enviar a velocidade
 void calcularEEnviarVelocidade()
@@ -333,8 +328,8 @@ void calcularEEnviarVelocidade()
     ws.textAll(jsonString);
 
     // Debug no Serial
-    //DESCOMENTAR
-    //Serial.printf("Velocidade: %.2f cm/s\n", abs(velocidadeAtual));
+    // DESCOMENTAR
+    // Serial.printf("Velocidade: %.2f cm/s\n", abs(velocidadeAtual));
 
     // Atualiza o tempo da última leitura
     ultimoTempoCalculo = tempoAtual;
@@ -354,7 +349,7 @@ void definirDistanciaDestino(float distancia)
 }
 
 // Função para calcular e enviar o ETA
-//DESCOMENTAR DPS
+// DESCOMENTAR DPS
 void calcularEEnviarETA()
 {
   unsigned long tempoAtual = millis();
@@ -364,7 +359,7 @@ void calcularEEnviarETA()
   {
     // Calcula a distância restante até o destino
     float distanciaRestante = distanciaDestino - distanciaPercorrida;
-    
+
     // Garante que a distância restante não seja negativa
     if (distanciaRestante < 0.0)
     {
@@ -396,8 +391,8 @@ void calcularEEnviarETA()
     // Debug no Serial
     if (etaSegundos > 0)
     {
-      //Serial.printf("ETA: %.2f segundos (Distância restante: %.2f cm, Velocidade: %.2f cm/s)\n",
-      //              etaSegundos, distanciaRestante, abs(velocidadeAtual));
+      // Serial.printf("ETA: %.2f segundos (Distância restante: %.2f cm, Velocidade: %.2f cm/s)\n",
+      //               etaSegundos, distanciaRestante, abs(velocidadeAtual));
     }
 
     // Atualiza o tempo da última leitura
@@ -443,17 +438,23 @@ void initWebSocket()
   ws.onEvent(onEvent);
   server.addHandler(&ws);
 }
-//funcoes de andar
-void moverMotorA(int direcao) {
-  if (direcao == 1) {
-    digitalWrite(IN1, HIGH);
-    digitalWrite(IN2, LOW);
-  } else if (direcao == -1) {
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, HIGH);
-  } else {
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, LOW);
+// funcoes de andar
+void moverMotorA(int direcao)
+{
+  if (direcao == 1)
+  {
+    digitalWrite(FRENTE_ESQ, HIGH);
+    digitalWrite(TRAS_ESQ, LOW);
+  }
+  else if (direcao == -1)
+  {
+    digitalWrite(FRENTE_ESQ, LOW);
+    digitalWrite(TRAS_ESQ, HIGH);
+  }
+  else
+  {
+    digitalWrite(FRENTE_ESQ, LOW);
+    digitalWrite(TRAS_ESQ, LOW);
   }
 }
 
@@ -461,59 +462,57 @@ void moverMotorA(int direcao) {
  * Controla o Motor B
  * direcao: 1 (frente), -1 (trás), 0 (parar/frear)
  */
-void moverMotorB(int direcao) {
-  if (direcao == 1) {
-    digitalWrite(IN3, HIGH);
-    digitalWrite(IN4, LOW);
-  } else if (direcao == -1) {
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
-  } else {
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, LOW);
+void moverMotorB(int direcao)
+{
+  if (direcao == 1)
+  {
+    digitalWrite(FRENTE_DIR, HIGH);
+    digitalWrite(TRAS_DIR, LOW);
+  }
+  else if (direcao == -1)
+  {
+    digitalWrite(FRENTE_DIR, LOW);
+    digitalWrite(TRAS_DIR, HIGH);
+  }
+  else
+  {
+    digitalWrite(FRENTE_DIR, LOW);
+    digitalWrite(TRAS_DIR, LOW);
   }
 }
 
 // Função auxiliar para parar tudo
-void pararMotores() {
+void pararMotores()
+{
   moverMotorA(0);
   moverMotorB(0);
 }
 
+void executarRota(JsonArray elementosArray, Rota novaRota)
+{
+  for (const auto &cmd : novaRota.comandos)
+  {
+    JsonObject elemObj = elementosArray.createNestedObject();
+    elemObj["tipo"] = (cmd.tipo == "MOVE") ? "distancia" : "rotacao";
+    elemObj["valor"] = cmd.valor;
+    elemObj["id"] = millis() + random(1000);
+    if (cmd.tipo == "ROTATE")
+    {
+      elemObj["direcao"] = cmd.direcao;
+    }
+    else if (cmd.tipo == "MOVE")
+    {
+      META_PULSOS = cmd.valor * 1000;
+      total_pulsos_esq = 0;
+      total_pulsos_dir = 0;
+      
+      moverMotorA(1);
+      moverMotorB(1);
 
+      Serial.printf("andou\n");
 
-
-void executarRota(JsonArray elementosArray, Rota novaRota) {
-for (const auto &cmd : novaRota.comandos)
-      {
-        JsonObject elemObj = elementosArray.createNestedObject();
-        elemObj["tipo"] = (cmd.tipo == "MOVE") ? "distancia" : "rotacao";
-        elemObj["valor"] = cmd.valor;
-        elemObj["id"] = millis() + random(1000);
-        if (cmd.tipo == "ROTATE")
-        {
-          elemObj["direcao"] = cmd.direcao;
-        }
-        else if (cmd.tipo == "MOVE")
-        {
-          moverMotorB(1);
-          moverMotorA(1);
-          Serial.printf("andou\n");
-
-          long int inicio = millis();
-
-          Serial.printf("esperemos 5 segudos\n");
-          while(millis() - inicio < cmd.valor*1000)
-          {
-            //Serial.printf("%ld",millis() - inicio);
-          }
-
-          pararMotores();
-          Serial.printf("Paroooo\n\n\n\n\n\n\n\n\n\n\n");
-
-          delay(1000);
-        }
-      }
+    }
+  }
 }
 
 void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *mensagem, size_t len)
@@ -668,7 +667,7 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
           elemObj["direcao"] = cmd.direcao;
         }
       }
-      
+
       executarRota(elementosArray, novaRota);
       String notifString;
       serializeJson(notifDoc, notifString);
@@ -782,14 +781,48 @@ void notifyClients(String value)
   ws.textAll(String(value));
 }
 
+void configuraEncoderEsquerdoPCNT()
+{
+  pcnt_config_t configEncoder = {};
+  configEncoder.pulse_gpio_num = ENC_A_ESQ;
+  configEncoder.ctrl_gpio_num = ENC_B_ESQ;
+  configEncoder.channel = PCNT_CHANNEL_0;
+  configEncoder.unit = PCNT_UNIT_0;
+  configEncoder.pos_mode = PCNT_COUNT_INC;
+  configEncoder.neg_mode = PCNT_COUNT_DIS;
+  configEncoder.hctrl_mode = PCNT_MODE_KEEP;
+  configEncoder.lctrl_mode = PCNT_MODE_REVERSE;
+  pcnt_unit_config(&configEncoder);
+  pcnt_set_filter_value(PCNT_UNIT_0, 1023);
+  pcnt_filter_enable(PCNT_UNIT_0);
+  pcnt_counter_pause(PCNT_UNIT_0);
+  pcnt_counter_clear(PCNT_UNIT_0);
+  pcnt_counter_resume(PCNT_UNIT_0);
+}
+
+void configuraEncoderDireitoPCNT()
+{
+  pcnt_config_t configEncoder = {};
+  configEncoder.pulse_gpio_num = ENC_A_DIR;
+  configEncoder.ctrl_gpio_num = ENC_B_DIR;
+  configEncoder.channel = PCNT_CHANNEL_0;
+  configEncoder.unit = PCNT_UNIT_1;
+  configEncoder.pos_mode = PCNT_COUNT_INC;
+  configEncoder.neg_mode = PCNT_COUNT_DIS;
+  configEncoder.hctrl_mode = PCNT_MODE_KEEP;
+  configEncoder.lctrl_mode = PCNT_MODE_REVERSE;
+  pcnt_unit_config(&configEncoder);
+  pcnt_set_filter_value(PCNT_UNIT_1, 1023);
+  pcnt_filter_enable(PCNT_UNIT_1);
+  pcnt_counter_pause(PCNT_UNIT_1);
+  pcnt_counter_clear(PCNT_UNIT_1);
+  pcnt_counter_resume(PCNT_UNIT_1);
+}
+
 void setup()
 {
   // Serial port for debugging purposes
   Serial.begin(115200);
-
-  Serial.println("\n\n=================================");
-  Serial.println("    CEGOINHA ESP32 - Iniciando");
-  Serial.println("=================================");
 
   // Inicializar LittleFS
   Serial.println("\n--- Inicializando LittleFS ---");
@@ -811,18 +844,6 @@ void setup()
   Serial.println("------------------------------\n");
 
   // ===== INÍCIO: CÓDIGO DO ENCODER =====
-  Serial.println("--- Setup do Encoder ---");
-  // Configura os pinos do encoder como entrada
-  pinMode(ENCODER_PIN_A, INPUT);
-  pinMode(ENCODER_PIN_B, INPUT);
-
-  // Configura a interrupção no canal A do encoder
-  // FALLING = detecta quando o sinal muda de HIGH para LOW
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), encoderISR, FALLING);
-
-  // Inicializa variáveis de tempo
-  ultimoTempoCalculo = millis();
-  ultimoTempoCalculoETA = millis();
 
   Serial.println("✅ Encoder configurado nos pinos IO34 e IO35");
   Serial.println("✅ Interrupção anexada ao canal A");
@@ -832,8 +853,8 @@ void setup()
   // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
   Serial.println("--- Setup do Motor da Porta ---");
   // --- Setup do Motor ---
-  pinMode(PIN_IN1, OUTPUT);
-  pinMode(PIN_IN2, OUTPUT);
+  pinMode(PIN_FRENTE_ESQ, OUTPUT);
+  pinMode(PIN_TRAS_ESQ, OUTPUT);
   // IMPORTANTE: Conecte o pino ENA do L298N direto ao VCC (5V ou 12V)
   // para que o motor sempre tenha potência máxima
 
@@ -879,35 +900,21 @@ void setup()
   Serial.println("Aguardando conexões...\n");
   Serial.println("=================================\n");
 
+  // andar
+  pinMode(FRENTE_ESQ, OUTPUT);
+  pinMode(TRAS_ESQ, OUTPUT);
+  pinMode(FRENTE_DIR, OUTPUT);
+  pinMode(TRAS_DIR, OUTPUT);
 
+  // ENCODER
 
-
-
-
-  //andar
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
-
-
+  configuraEncoderEsquerdoPCNT();
+  configuraEncoderDireitoPCNT();
 }
 
 void loop()
 {
   ws.cleanupClients();
-
-  // ===== INÍCIO: CÓDIGO DO ENCODER =====
-  // Calcula e envia a velocidade periodicamente
-  calcularEEnviarVelocidade();
-  // ===== FIM: CÓDIGO DO ENCODER =====
-
-  // ===== INÍCIO: CÓDIGO DO ETA =====
-  // Calcula e envia o ETA periodicamente
-  calcularEEnviarETA();
-  // ===== FIM: CÓDIGO DO ETA =====
-
-  // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
 
   // --- MÁQUINA DE ESTADOS DO MOTOR DA PORTA ---
   // Esta parte roda continuamente, verificando o estado da porta
@@ -969,33 +976,83 @@ void loop()
     break;
   }
   // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
-}
 
-// Função auxiliar para obter informações de uma rota específica
-String getRotaInfo(size_t indice)
-{
-  if (indice >= rotasArmazenadas.size())
+  // 1. Variáveis para guardar as leituras parciais
+  int16_t parcial_esq = 0;
+  int16_t parcial_dir = 0;
+
+  // --- Leitura Atômica do Encoder ESQUERDO ---
+  if (!meta_esq_atingida)
   {
-    return "Rota não encontrada";
-  }
+    pcnt_counter_pause(PCNT_UNIT_0);
+    pcnt_get_counter_value(PCNT_UNIT_0, &parcial_esq);
+    pcnt_counter_clear(PCNT_UNIT_0);
+    pcnt_counter_resume(PCNT_UNIT_0);
 
-  Rota rota = rotasArmazenadas[indice];
-  String info = "Rota ID: " + String(rota.id) + "\n";
-  info += "Comandos: " + String(rota.comandos.size()) + "\n";
-
-  for (size_t i = 0; i < rota.comandos.size(); i++)
-  {
-    ComandoRota cmd = rota.comandos[i];
-    info += "  " + String(i + 1) + ". ";
-    if (cmd.tipo == "MOVE")
+    if (parcial_esq != 0)
     {
-      info += "MOVE " + String(cmd.valor) + "\n";
-    }
-    else
-    {
-      info += "ROTATE " + String(cmd.valor) + "° " + cmd.direcao + "\n";
+      total_pulsos_esq += (int64_t)parcial_esq;
     }
   }
 
-  return info;
+  // --- Leitura Atômica do Encoder DIREITO ---
+  if (!meta_dir_atingida)
+  {
+    pcnt_counter_pause(PCNT_UNIT_1);
+    pcnt_get_counter_value(PCNT_UNIT_1, &parcial_dir);
+    pcnt_counter_clear(PCNT_UNIT_1);
+    pcnt_counter_resume(PCNT_UNIT_1);
+
+    if (parcial_dir != 0)
+    {
+      total_pulsos_dir += (int64_t)parcial_dir;
+    }
+  }
+
+  // --- Lógica de Parada (individual) ---
+  if (META_PULSOS != 0) {
+  if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida))
+  {
+    meta_esq_atingida = true;
+    digitalWrite(FRENTE_ESQ, LOW);
+    Serial.println(">>> META ESQUERDA ATINGIDA! <<<");
+    ws.textAll(">>> META ESQUERDA ATINGIDA! <<<");
+  }
+
+  if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida))
+  {
+    meta_dir_atingida = true;
+    digitalWrite(FRENTE_DIR, LOW);
+    Serial.println(">>> META DIREITA ATINGIDA! <<<");
+    ws.textAll(">>> META DIREITA ATINGIDA! <<<");
+  }
+
+  // --- Verificação Final ---
+  if (meta_esq_atingida && meta_dir_atingida)
+  {
+    //prepara para próxima rota
+    META_PULSOS = 0;
+    meta_dir_atingida = false;
+    meta_esq_atingida = false;
+    total_pulsos_dir = 0;
+    total_pulsos_esq = 0;
+    parcial_dir = 0;
+    parcial_esq = 0;
+  }
+  }
+  // --- Bloco de Impressão (Debug) ---
+  unsigned long tempoAtual = millis();
+  if (tempoAtual - tempoPrintAnterior >= intervaloPrint)
+  {
+    tempoPrintAnterior = tempoAtual; // Reinicia o timer de print
+
+    // Usa Serial.printf() para formatar a saída.
+    // %lld é o especificador para 'long long int' (que é o int64_t)
+    // O '\n' no final significa "pular linha"
+    Serial.printf("ESQ: %lld | DIR: %lld \n",
+                  total_pulsos_esq,
+                  total_pulsos_dir);
+    // ...existing code...
+    ws.textAll("ESQ: " + String(total_pulsos_esq) + " | DIR: " + String(total_pulsos_dir) + " \n");
+  }
 }
