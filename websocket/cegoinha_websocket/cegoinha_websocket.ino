@@ -34,6 +34,8 @@ volatile bool meta_dir_atingida = false;
 
 int64_t META_PULSOS = 0;
 
+String movimento = "none";
+
 // --- Variáveis para o Timer de Impressão ---
 unsigned long tempoPrintAnterior = 0;
 const unsigned long intervaloPrint = 250; // Imprime a cada 250ms (4x por segundo)
@@ -439,7 +441,7 @@ void initWebSocket()
   server.addHandler(&ws);
 }
 // funcoes de andar
-void moverMotorA(int direcao)
+void moverMotorEsq(int direcao)
 {
   if (direcao == 1)
   {
@@ -462,7 +464,7 @@ void moverMotorA(int direcao)
  * Controla o Motor B
  * direcao: 1 (frente), -1 (trás), 0 (parar/frear)
  */
-void moverMotorB(int direcao)
+void moverMotorDir(int direcao)
 {
   if (direcao == 1)
   {
@@ -484,8 +486,8 @@ void moverMotorB(int direcao)
 // Função auxiliar para parar tudo
 void pararMotores()
 {
-  moverMotorA(0);
-  moverMotorB(0);
+  moverMotorEsq(0);
+  moverMotorDir(0);
 }
 
 void executarRota(JsonArray elementosArray, Rota novaRota)
@@ -499,18 +501,35 @@ void executarRota(JsonArray elementosArray, Rota novaRota)
     if (cmd.tipo == "ROTATE")
     {
       elemObj["direcao"] = cmd.direcao;
+      if (cmd.direcao == "direita")
+      {
+        movimento = "ROTATE_D";
+        total_pulsos_esq = 0;
+        total_pulsos_dir = 0;
+        moverMotorEsq(1);
+        META_PULSOS = 1000;
+      }
+
+      else if (cmd.direcao == "esquerda")
+      {
+        movimento = "ROTATE_E";
+        total_pulsos_esq = 0;
+        total_pulsos_dir = 0;
+        moverMotorDir(1);
+        META_PULSOS = 1000; // VV VER QUANTIDADE BOA AQUI
+      }
     }
     else if (cmd.tipo == "MOVE")
     {
+      movimento = cmd.tipo;
       META_PULSOS = cmd.valor * 1000;
       total_pulsos_esq = 0;
       total_pulsos_dir = 0;
-      
-      moverMotorA(1);
-      moverMotorB(1);
+
+      moverMotorEsq(1);
+      moverMotorDir(1);
 
       Serial.printf("andou\n");
-
     }
   }
 }
@@ -1010,35 +1029,83 @@ void loop()
   }
 
   // --- Lógica de Parada (individual) ---
-  if (META_PULSOS != 0) {
-  if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida))
+  if (META_PULSOS != 0)
   {
-    meta_esq_atingida = true;
-    digitalWrite(FRENTE_ESQ, LOW);
-    Serial.println(">>> META ESQUERDA ATINGIDA! <<<");
-    ws.textAll(">>> META ESQUERDA ATINGIDA! <<<");
-  }
+    if (movimento = "MOVE")
+    {
+      if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida))
+      {
+        meta_esq_atingida = true;
+        moverMotorEsq(0);
+        Serial.println(">>> META ESQUERDA ATINGIDA! <<<");
+        ws.textAll(">>> META ESQUERDA ATINGIDA! <<<");
+      }
 
-  if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida))
-  {
-    meta_dir_atingida = true;
-    digitalWrite(FRENTE_DIR, LOW);
-    Serial.println(">>> META DIREITA ATINGIDA! <<<");
-    ws.textAll(">>> META DIREITA ATINGIDA! <<<");
-  }
+      if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida))
+      {
+        meta_dir_atingida = true;
+        moverMotorDir(0);
+        Serial.println(">>> META DIREITA ATINGIDA! <<<");
+        ws.textAll(">>> META DIREITA ATINGIDA! <<<");
+      }
 
-  // --- Verificação Final ---
-  if (meta_esq_atingida && meta_dir_atingida)
-  {
-    //prepara para próxima rota
-    META_PULSOS = 0;
-    meta_dir_atingida = false;
-    meta_esq_atingida = false;
-    total_pulsos_dir = 0;
-    total_pulsos_esq = 0;
-    parcial_dir = 0;
-    parcial_esq = 0;
-  }
+      // --- Verificação Final ---
+      if (meta_esq_atingida && meta_dir_atingida)
+      {
+        // prepara para próxima rota
+        META_PULSOS = 0;
+        meta_dir_atingida = false;
+        meta_esq_atingida = false;
+        total_pulsos_dir = 0;
+        total_pulsos_esq = 0;
+        parcial_dir = 0;
+        parcial_esq = 0;
+      }
+    }
+
+    else if (movimento = "ROTATE_D")
+    {
+      if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida))
+      {
+        meta_esq_atingida = true;
+        moverMotorEsq(0);
+        Serial.println(">>> META ESQUERDA ATINGIDA! <<<");
+        ws.textAll(">>> META ESQUERDA ATINGIDA! <<<");
+      }
+      if (meta_esq_atingida)
+      {
+       // prepara para próxima rota
+        META_PULSOS = 0;
+        meta_dir_atingida = false;
+        meta_esq_atingida = false;
+        total_pulsos_dir = 0;
+        total_pulsos_esq = 0;
+        parcial_dir = 0;
+        parcial_esq = 0;
+      }
+    }
+
+    else if (movimento = "ROTATE_E")
+    {
+      if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida))
+      {
+        meta_dir_atingida = true;
+        moverMotorDir(0);
+        Serial.println(">>> META DIREITA ATINGIDA! <<<");
+        ws.textAll(">>> META DIREITA ATINGIDA! <<<");
+      }
+      if (meta_dir_atingida)
+      {
+       // prepara para próxima rota
+        META_PULSOS = 0;
+        meta_dir_atingida = false;
+        meta_esq_atingida = false;
+        total_pulsos_dir = 0;
+        total_pulsos_esq = 0;
+        parcial_dir = 0;
+        parcial_esq = 0;
+      }
+    }
   }
   // --- Bloco de Impressão (Debug) ---
   unsigned long tempoAtual = millis();
