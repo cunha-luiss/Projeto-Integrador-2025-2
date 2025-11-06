@@ -34,6 +34,8 @@ volatile bool meta_dir_atingida = false;
 
 int64_t META_PULSOS = 0;
 
+int COMANDO = -1;
+
 String movimento = "none";
 
 // --- Variáveis para o Timer de Impressão ---
@@ -508,6 +510,7 @@ void executarRota(JsonArray elementosArray, Rota novaRota)
         total_pulsos_dir = 0;
         moverMotorEsq(1);
         META_PULSOS = 1000;
+        ws.textAll("VIRAR A DIREITA \n\n\n\n\n");
       }
 
       else if (cmd.direcao == "esquerda")
@@ -517,6 +520,8 @@ void executarRota(JsonArray elementosArray, Rota novaRota)
         total_pulsos_dir = 0;
         moverMotorDir(1);
         META_PULSOS = 1000; // VV VER QUANTIDADE BOA AQUI
+        ws.textAll("VIRAR A ESQUERDA \n\n\n\n\n");
+
       }
     }
     else if (cmd.tipo == "MOVE")
@@ -529,7 +534,8 @@ void executarRota(JsonArray elementosArray, Rota novaRota)
       moverMotorEsq(1);
       moverMotorDir(1);
 
-      Serial.printf("andou\n");
+      ws.textAll("FRENTE \n\n\n\n\n");
+
     }
   }
 }
