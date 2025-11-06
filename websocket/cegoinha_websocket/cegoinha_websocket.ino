@@ -34,13 +34,29 @@ volatile bool meta_dir_atingida = false;
 
 int64_t META_PULSOS = 0;
 
-int COMANDO = -1;
+struct ComandoRota
+{
+  String tipo;    // "MOVE" ou "ROTATE"
+  int valor;      // distância ou ângulo em graus
+  String direcao; // "direita" ou "esquerda" (apenas para ROTATE)
+};
+struct Rota
+{
+  unsigned long id;
+  std::vector<ComandoRota> comandos;
+  String dataHora;
+  String deviceId; // ID do dispositivo que enviou a rota
+};
 
+std::vector<Rota> rotasArmazenadas;
+int PASSO_ROTA = -1;
+
+Rota ROTA_ATUAL;
 String movimento = "none";
 
 // --- Variáveis para o Timer de Impressão ---
 unsigned long tempoPrintAnterior = 0;
-const unsigned long intervaloPrint = 250; // Imprime a cada 250ms (4x por segundo)
+const unsigned long intervaloPrint = 1500; // Imprime a cada 1s
 
 // ===== INÍCIO: CÓDIGO DO ENCODER E VELOCIDADE =====
 
@@ -100,26 +116,6 @@ struct DispositivoConectado
 
 // Mapa de dispositivos conectados
 std::vector<DispositivoConectado> dispositivosConectados;
-
-// Estrutura para armazenar comandos de rota
-struct ComandoRota
-{
-  String tipo;    // "MOVE" ou "ROTATE"
-  int valor;      // distância ou ângulo em graus
-  String direcao; // "direita" ou "esquerda" (apenas para ROTATE)
-};
-
-// Estrutura para armazenar uma rota completa
-struct Rota
-{
-  unsigned long id;
-  std::vector<ComandoRota> comandos;
-  String dataHora;
-  String deviceId; // ID do dispositivo que enviou a rota
-};
-
-// Vetor para armazenar todas as rotas recebidas
-std::vector<Rota> rotasArmazenadas;
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -492,24 +488,22 @@ void pararMotores()
   moverMotorDir(0);
 }
 
-void executarRota(JsonArray elementosArray, Rota novaRota)
+void executarRota(Rota &novaRota)
 {
-  for (const auto &cmd : novaRota.comandos)
-  {
-    JsonObject elemObj = elementosArray.createNestedObject();
-    elemObj["tipo"] = (cmd.tipo == "MOVE") ? "distancia" : "rotacao";
-    elemObj["valor"] = cmd.valor;
-    elemObj["id"] = millis() + random(1000);
+  if (PASSO_ROTA < 0){
+    return;
+  }
+  const ComandoRota &cmd = novaRota.comandos[PASSO_ROTA];
+  
     if (cmd.tipo == "ROTATE")
     {
-      elemObj["direcao"] = cmd.direcao;
       if (cmd.direcao == "direita")
       {
         movimento = "ROTATE_D";
         total_pulsos_esq = 0;
         total_pulsos_dir = 0;
         moverMotorEsq(1);
-        META_PULSOS = 1000;
+        META_PULSOS = 500;
         ws.textAll("VIRAR A DIREITA \n\n\n\n\n");
       }
 
@@ -519,14 +513,14 @@ void executarRota(JsonArray elementosArray, Rota novaRota)
         total_pulsos_esq = 0;
         total_pulsos_dir = 0;
         moverMotorDir(1);
-        META_PULSOS = 1000; // VV VER QUANTIDADE BOA AQUI
+        META_PULSOS = 500; // VV VER QUANTIDADE BOA AQUI
         ws.textAll("VIRAR A ESQUERDA \n\n\n\n\n");
 
       }
     }
     else if (cmd.tipo == "MOVE")
     {
-      movimento = cmd.tipo;
+      movimento = "MOVE";
       META_PULSOS = cmd.valor * 1000;
       total_pulsos_esq = 0;
       total_pulsos_dir = 0;
@@ -537,7 +531,27 @@ void executarRota(JsonArray elementosArray, Rota novaRota)
       ws.textAll("FRENTE \n\n\n\n\n");
 
     }
+  
+}
+
+void proximoComando(Rota &novaRota)
+{
+  PASSO_ROTA++;
+  ws.textAll("Passo rota: " + String(PASSO_ROTA) + "\nquantidade comandos: "+ String(novaRota.comandos.size()));
+  if (PASSO_ROTA < novaRota.comandos.size())
+  {
+    ws.textAll("Indo para a instrução " + String(PASSO_ROTA + 1));
+    executarRota(novaRota);
+    
   }
+  else
+  {
+    Serial.println("✅ Rota completa!");
+    ws.textAll("{\"channel\":\"ROTA_COMPLETA\",\"status\":\"ok\"}");
+    ROTA_ATUAL = Rota();
+    PASSO_ROTA = -1;
+  }
+
 }
 
 void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *mensagem, size_t len)
@@ -614,6 +628,11 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
     // Processar envio de rotas
     if (strcmp(channel, "ENVIAR_ROTAS") == 0)
     {
+      if (ROTA_ATUAL.comandos.size() > 0)
+      {
+        ws.textAll("Rota em andamento!! aguarde"); // VV implementar no front dps
+        return;
+      }
       if (!doc.containsKey("value"))
       {
         Serial.println("Erro: 'value' não encontrado para ENVIAR_ROTAS");
@@ -693,7 +712,8 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
         }
       }
 
-      executarRota(elementosArray, novaRota);
+      ROTA_ATUAL = novaRota;
+      proximoComando(ROTA_ATUAL);
       String notifString;
       serializeJson(notifDoc, notifString);
       ws.textAll(notifString);
@@ -1037,7 +1057,7 @@ void loop()
   // --- Lógica de Parada (individual) ---
   if (META_PULSOS != 0)
   {
-    if (movimento = "MOVE")
+    if (movimento == "MOVE")
     {
       if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida))
       {
@@ -1066,10 +1086,13 @@ void loop()
         total_pulsos_esq = 0;
         parcial_dir = 0;
         parcial_esq = 0;
+
+        proximoComando(ROTA_ATUAL);
+
       }
     }
 
-    else if (movimento = "ROTATE_D")
+    else if (movimento == "ROTATE_D")
     {
       if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida))
       {
@@ -1088,10 +1111,13 @@ void loop()
         total_pulsos_esq = 0;
         parcial_dir = 0;
         parcial_esq = 0;
+
+        proximoComando(ROTA_ATUAL);
+
       }
     }
 
-    else if (movimento = "ROTATE_E")
+    else if (movimento == "ROTATE_E")
     {
       if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida))
       {
@@ -1110,6 +1136,8 @@ void loop()
         total_pulsos_esq = 0;
         parcial_dir = 0;
         parcial_esq = 0;
+
+        proximoComando(ROTA_ATUAL);
       }
     }
   }
