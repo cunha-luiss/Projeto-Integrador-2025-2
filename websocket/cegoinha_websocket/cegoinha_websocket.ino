@@ -50,9 +50,13 @@ struct Rota
 
 std::vector<Rota> rotasArmazenadas;
 int PASSO_ROTA = -1;
+unsigned long tempoTerminoComandoAnterior = 0;
+const unsigned int intervaloEsperaEntreComandos = 5000; //VV ajustar
+
 
 Rota ROTA_ATUAL;
 String movimento = "none";
+volatile bool aguardandoProximoComando = false;
 
 // --- Variáveis para o Timer de Impressão ---
 unsigned long tempoPrintAnterior = 0;
@@ -287,56 +291,6 @@ void segurarPosicaoPorta()
 }
 // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
-// ===== INÍCIO: FUNÇÕES DO ENCODER =====
-
-// Função para calcular e enviar a velocidade
-void calcularEEnviarVelocidade()
-{
-  unsigned long tempoAtual = millis();
-
-  // Verifica se já passou o intervalo de cálculo
-  if (tempoAtual - ultimoTempoCalculo >= intervaloCalculo)
-  {
-    // Calcula o tempo decorrido em segundos
-    float tempoDecorrido = (tempoAtual - ultimoTempoCalculo) / 1000.0;
-
-    // Desabilita interrupções temporariamente para ler o contador
-    noInterrupts();
-    long pulsos = contadorPulsos;
-    contadorPulsos = 0; // Reseta o contador
-    interrupts();
-
-    // Calcula o número de revoluções
-    float revolucoes = pulsos / PULSOS_POR_REVOLUCAO;
-
-    // Calcula a distância percorrida (em cm)
-    float distancia = revolucoes * PI * DIAMETRO_RODA;
-
-    // Acumula a distância percorrida para cálculo do ETA
-    distanciaPercorrida += abs(distancia);
-
-    // Calcula a velocidade (cm/s)
-    velocidadeAtual = distancia / tempoDecorrido;
-
-    // Envia a velocidade via WebSocket
-    DynamicJsonDocument doc(256);
-    doc["channel"] = "VELOCIDADE";
-    doc["value"] = abs(velocidadeAtual); // Envia o valor absoluto
-
-    String jsonString;
-    serializeJson(doc, jsonString);
-    ws.textAll(jsonString);
-
-    // Debug no Serial
-    // DESCOMENTAR
-    // Serial.printf("Velocidade: %.2f cm/s\n", abs(velocidadeAtual));
-
-    // Atualiza o tempo da última leitura
-    ultimoTempoCalculo = tempoAtual;
-  }
-}
-
-// ===== FIM: FUNÇÕES DO ENCODER =====
 
 // ===== INÍCIO: FUNÇÕES DO ETA =====
 
@@ -346,58 +300,6 @@ void definirDistanciaDestino(float distancia)
   distanciaDestino = distancia;
   distanciaPercorrida = 0.0; // Reseta a distância percorrida ao definir novo destino
   Serial.printf("Distância até destino definida: %.2f cm\n", distanciaDestino);
-}
-
-// Função para calcular e enviar o ETA
-// DESCOMENTAR DPS
-void calcularEEnviarETA()
-{
-  unsigned long tempoAtual = millis();
-
-  // Verifica se já passou o intervalo de cálculo do ETA
-  if (tempoAtual - ultimoTempoCalculoETA >= intervaloCalculoETA)
-  {
-    // Calcula a distância restante até o destino
-    float distanciaRestante = distanciaDestino - distanciaPercorrida;
-
-    // Garante que a distância restante não seja negativa
-    if (distanciaRestante < 0.0)
-    {
-      distanciaRestante = 0.0;
-    }
-
-    // Se não há distância restante ou velocidade é muito baixa, não calcula
-    if (distanciaRestante <= 0.0 || abs(velocidadeAtual) < 0.1)
-    {
-      etaSegundos = 0.0;
-    }
-    else
-    {
-      // Calcula o ETA em segundos: tempo = distância restante / velocidade
-      etaSegundos = distanciaRestante / abs(velocidadeAtual);
-    }
-
-    // Envia o ETA via WebSocket
-    DynamicJsonDocument doc(256);
-    doc["channel"] = "ETA";
-    doc["value"] = etaSegundos;
-    doc["distancia"] = distanciaRestante;
-    doc["velocidade"] = abs(velocidadeAtual);
-
-    String jsonString;
-    serializeJson(doc, jsonString);
-    ws.textAll(jsonString);
-
-    // Debug no Serial
-    if (etaSegundos > 0)
-    {
-      // Serial.printf("ETA: %.2f segundos (Distância restante: %.2f cm, Velocidade: %.2f cm/s)\n",
-      //               etaSegundos, distanciaRestante, abs(velocidadeAtual));
-    }
-
-    // Atualiza o tempo da última leitura
-    ultimoTempoCalculoETA = tempoAtual;
-  }
 }
 
 // ===== FIM: FUNÇÕES DO ETA =====
@@ -1087,8 +989,9 @@ void loop()
         parcial_dir = 0;
         parcial_esq = 0;
 
-        proximoComando(ROTA_ATUAL);
-
+        aguardandoProximoComando = true;
+        ws.textAll("Esperaremos " + String(intervaloEsperaEntreComandos) + " segundos até o próximo comando");
+        tempoTerminoComandoAnterior = millis();
       }
     }
 
@@ -1112,7 +1015,10 @@ void loop()
         parcial_dir = 0;
         parcial_esq = 0;
 
-        proximoComando(ROTA_ATUAL);
+        aguardandoProximoComando = true;
+        ws.textAll("Esperaremos " + String(intervaloEsperaEntreComandos) + " segundos até o próximo comando");
+        tempoTerminoComandoAnterior = millis();
+
 
       }
     }
@@ -1137,7 +1043,9 @@ void loop()
         parcial_dir = 0;
         parcial_esq = 0;
 
-        proximoComando(ROTA_ATUAL);
+        aguardandoProximoComando = true;
+        ws.textAll("Esperaremos " + String(intervaloEsperaEntreComandos) + " segundos até o próximo comando");
+        tempoTerminoComandoAnterior = millis();
       }
     }
   }
@@ -1156,4 +1064,17 @@ void loop()
     // ...existing code...
     ws.textAll("ESQ: " + String(total_pulsos_esq) + " | DIR: " + String(total_pulsos_dir) + " \n");
   }
+  tempoAtual = millis();
+  if (aguardandoProximoComando && (tempoAtual - tempoTerminoComandoAnterior >= intervaloEsperaEntreComandos))
+  {
+    aguardandoProximoComando = false;
+    ws.textAll(String(intervaloEsperaEntreComandos) + " segundos esperados");
+    proximoComando(ROTA_ATUAL);
+  }
+
 }
+
+
+//DEPOIS TESTA AI Q COLOCOU PARA ESPERAR 2 SEGUNDOS ATÉ EXECUTAR PRÓXIMA AÇÃO
+
+//tirou trens do ETA e da Velocidade
