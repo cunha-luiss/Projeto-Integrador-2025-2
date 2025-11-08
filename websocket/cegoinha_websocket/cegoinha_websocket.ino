@@ -467,6 +467,9 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       String resposta = "{\"status\":\"ok\",\"message\":\"Dispositivo identificado\",\"deviceId\":\"" + deviceId + "\"}";
       client->text(resposta);
 
+      atualizarBateria();
+      enviarDadosBateria();
+      verificarBateriaCritica();
       // Enviar rotas existentes para sincronização
       enviarRotasParaCliente(client);
       return;
