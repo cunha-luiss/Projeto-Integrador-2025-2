@@ -496,6 +496,36 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
 
     // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
+    // Processar comando para PARAR O CARRINHO
+    else if (strcmp(channel, "PARAR_CARRINHO") == 0)
+    {
+      Serial.println("⛔ Comando: PARAR_CARRINHO recebido!");
+      
+      // Para todos os motores imediatamente
+      pararMotores();
+      
+      // Reseta as variáveis de controle da rota
+      PASSO_ROTA = -1;
+      META_PULSOS = 0;
+      total_pulsos_esq = 0;
+      total_pulsos_dir = 0;
+      meta_esq_atingida = false;
+      meta_dir_atingida = false;
+      aguardandoProximoComando = false;
+      movimento = "none";
+      
+      // Limpa a rota atual
+      ROTA_ATUAL = Rota();
+      
+      Serial.println("✅ Carrinho parado. Rota cancelada.");
+      
+      // Notifica todos os clientes
+      String resposta = "{\"channel\":\"CARRINHO_PARADO\",\"status\":\"ok\",\"message\":\"Carrinho parado e rota cancelada\"}";
+      ws.textAll(resposta);
+      
+      client->text("{\"status\":\"ok\",\"message\":\"Comando 'PARAR_CARRINHO' executado\"}");
+    }
+
     // Processar comando para DEFINIR DISTÂNCIA DESTINO
     else if (strcmp(channel, "DEFINIR_DISTANCIA") == 0) {
       if (doc.containsKey("value")) {
