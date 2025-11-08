@@ -578,6 +578,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 alert('✅ Rota concluída com sucesso!');
             }
+            else if (data.channel === 'BATTERY_STATUS') {
+                // Atualiza informações da bateria
+                console.log('🔋 Bateria:', data.soc + '%', data.voltage + 'V');
+                
+                const socElement = $('#bateria-soc');
+                if (socElement) {
+                    socElement.textContent = Math.round(data.soc);
+                    
+                    // Muda cor baseado no nível
+                    const socCard = socElement.closest('.status-card');
+                    if (socCard) {
+                        const valueDiv = socCard.querySelector('.status-value');
+                        if (valueDiv) {
+                            if (data.soc <= 10) {
+                                valueDiv.style.backgroundColor = '#FF3D00';
+                                valueDiv.style.color = '#fff';
+                            } else if (data.soc <= 20) {
+                                valueDiv.style.backgroundColor = '#FF6B00';
+                                valueDiv.style.color = '#fff';
+                            } else {
+                                valueDiv.style.backgroundColor = '#C8C8C8';
+                                valueDiv.style.color = '#000';
+                            }
+                        }
+                    }
+                }
+                
+                // Atualiza tensão se houver elemento
+                const voltageElement = $('#bateria-voltage');
+                if (voltageElement) {
+                    voltageElement.textContent = data.voltage.toFixed(2);
+                }
+            }
+            else if (data.channel === 'BATTERY_CRITICAL') {
+                console.error('⚠️ BATERIA CRÍTICA!');
+                alert('⚠️ BATERIA CRÍTICA! Carrinho parado automaticamente. Recarregue a bateria.');
+                
+                // Oculta o botão de parar
+                ocultarBotaoParar();
+            }
             else if ((data.status === 'ok' || data.status === 'info') && data.message && data.message.includes('Porta')) {
                 console.log('Info da porta:', data.message);
                 if (statusPortaInfo) {
