@@ -4,25 +4,16 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <vector>
+#include "structures_projeto.h"
 #include "driver/pcnt.h"
+#include "motores_andar.h"
+
 
 const char *ssid = "cegoinha";
 const char *password = "cegoinha123";
 
 #define ROTAS_FILE "/rotas.json"
 // andar
-
-// Define os pinos para o Motor esquerdo
-#define FRENTE_ESQ 14
-#define TRAS_ESQ 27
-#define ENC_A_ESQ 34
-#define ENC_B_ESQ 35
-
-// Define os pinos para o Motor direito
-#define FRENTE_DIR 26
-#define TRAS_DIR 25
-#define ENC_A_DIR 33
-#define ENC_B_DIR 32
 
 // para contar pulsos
 volatile int64_t total_pulsos_esq = 0;
@@ -34,24 +25,12 @@ volatile bool meta_dir_atingida = false;
 
 int64_t META_PULSOS = 0;
 
-struct ComandoRota
-{
-  String tipo;    // "MOVE" ou "ROTATE"
-  int valor;      // distância ou ângulo em graus
-  String direcao; // "direita" ou "esquerda" (apenas para ROTATE)
-};
-struct Rota
-{
-  unsigned long id;
-  std::vector<ComandoRota> comandos;
-  String dataHora;
-  String deviceId; // ID do dispositivo que enviou a rota
-};
+
 
 std::vector<Rota> rotasArmazenadas;
 int PASSO_ROTA = -1;
 unsigned long tempoTerminoComandoAnterior = 0;
-const unsigned int intervaloEsperaEntreComandos = 5000; //VV ajustar
+const unsigned int intervaloEsperaEntreComandos = 5000;  //VV ajustar
 
 
 Rota ROTA_ATUAL;
@@ -60,29 +39,29 @@ volatile bool aguardandoProximoComando = false;
 
 // --- Variáveis para o Timer de Impressão ---
 unsigned long tempoPrintAnterior = 0;
-const unsigned long intervaloPrint = 1500; // Imprime a cada 1s
+const unsigned long intervaloPrint = 1500;  // Imprime a cada 1s
 
 // ===== INÍCIO: CÓDIGO DO ENCODER E VELOCIDADE =====
 
 // --- Parâmetros do Motor e Encoder ---
-#define PULSOS_POR_REVOLUCAO 20.0 // Número de pulsos por revolução do encoder (ajuste conforme seu motor)
-#define DIAMETRO_RODA 6.5         // Diâmetro da roda em cm (ajuste conforme seu carrinho)
+#define PULSOS_POR_REVOLUCAO 20.0  // Número de pulsos por revolução do encoder (ajuste conforme seu motor)
+#define DIAMETRO_RODA 6.5          // Diâmetro da roda em cm (ajuste conforme seu carrinho)
 #define PI 3.14159265359
 
 // --- Variáveis de Contagem do Encoder ---
-volatile long contadorPulsos = 0; // Contador de pulsos do encoder
+volatile long contadorPulsos = 0;  // Contador de pulsos do encoder
 
 // --- Variáveis para Cálculo de Velocidade ---
 unsigned long ultimoTempoCalculo = 0;
-const unsigned long intervaloCalculo = 100; // Calcular velocidade a cada 100ms
-float velocidadeAtual = 0.0;                // Velocidade em cm/s
+const unsigned long intervaloCalculo = 100;  // Calcular velocidade a cada 100ms
+float velocidadeAtual = 0.0;                 // Velocidade em cm/s
 
 // --- Variáveis para Cálculo de ETA ---
-float distanciaDestino = 0.0;    // Distância total até o destino em cm
-float distanciaPercorrida = 0.0; // Distância acumulada percorrida desde o início da rota em cm
+float distanciaDestino = 0.0;     // Distância total até o destino em cm
+float distanciaPercorrida = 0.0;  // Distância acumulada percorrida desde o início da rota em cm
 unsigned long ultimoTempoCalculoETA = 0;
-const unsigned long intervaloCalculoETA = 500; // Calcular ETA a cada 500ms
-float etaSegundos = 0.0;                       // ETA em segundos
+const unsigned long intervaloCalculoETA = 500;  // Calcular ETA a cada 500ms
+float etaSegundos = 0.0;                        // ETA em segundos
 
 // ===== FIM: CÓDIGO DO ENCODER E VELOCIDADE =====
 
@@ -95,28 +74,22 @@ float etaSegundos = 0.0;                       // ETA em segundos
 // Pino ENA deve estar conectado direto ao 5V ou 12V para velocidade máxima
 
 // --- Configuração de Tempo da Porta ---
-#define TEMPO_ABERTURA_MS 3000   // Tempo para abrir completamente (3 segundos)
-#define TEMPO_FECHAMENTO_MS 3000 // Tempo para fechar completamente (3 segundos)
+#define TEMPO_ABERTURA_MS 3000    // Tempo para abrir completamente (3 segundos)
+#define TEMPO_FECHAMENTO_MS 3000  // Tempo para fechar completamente (3 segundos)
 
 // --- Controle de Estado da Porta (Lógica Não-Bloqueante) ---
 #define ESTADO_PORTA_PARADO 0
 #define ESTADO_PORTA_ABRINDO 1
 #define ESTADO_PORTA_FECHANDO 2
-#define ESTADO_PORTA_SEGURANDO 3 // Novo estado: segurar posição
+#define ESTADO_PORTA_SEGURANDO 3  // Novo estado: segurar posição
 
-int estadoPorta = ESTADO_PORTA_PARADO;  // Estado atual da porta
-unsigned long tempoInicioMovimento = 0; // Marca quando o movimento começou
+int estadoPorta = ESTADO_PORTA_PARADO;   // Estado atual da porta
+unsigned long tempoInicioMovimento = 0;  // Marca quando o movimento começou
 
 // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
 // Estrutura para armazenar informações do dispositivo conectado
-struct DispositivoConectado
-{
-  uint32_t clientId;
-  String deviceId;
-  String sessionId;
-  unsigned long lastSeen;
-};
+
 
 // Mapa de dispositivos conectados
 std::vector<DispositivoConectado> dispositivosConectados;
@@ -133,34 +106,29 @@ AsyncWebSocket ws("/ws");
 // ===== Funções LittleFS para Persistência de Rotas =====
 
 // Salvar rotas no LittleFS
-void salvarRotasLittleFS()
-{
+void salvarRotasLittleFS() {
   DynamicJsonDocument doc(8192);
   JsonArray rotasArray = doc.createNestedArray("rotas");
 
-  for (const auto &rota : rotasArmazenadas)
-  {
+  for (const auto &rota : rotasArmazenadas) {
     JsonObject rotaObj = rotasArray.createNestedObject();
     rotaObj["id"] = rota.id;
     rotaObj["dataHora"] = rota.dataHora;
     rotaObj["deviceId"] = rota.deviceId;
 
     JsonArray comandosArray = rotaObj.createNestedArray("comandos");
-    for (const auto &cmd : rota.comandos)
-    {
+    for (const auto &cmd : rota.comandos) {
       JsonObject cmdObj = comandosArray.createNestedObject();
       cmdObj["tipo"] = cmd.tipo;
       cmdObj["valor"] = cmd.valor;
-      if (cmd.tipo == "ROTATE")
-      {
+      if (cmd.tipo == "ROTATE") {
         cmdObj["direcao"] = cmd.direcao;
       }
     }
   }
 
   File file = LittleFS.open(ROTAS_FILE, "w");
-  if (!file)
-  {
+  if (!file) {
     Serial.println("❌ Erro ao abrir arquivo para escrita");
     return;
   }
@@ -171,17 +139,14 @@ void salvarRotasLittleFS()
 }
 
 // Carregar rotas do LittleFS
-void carregarRotasLittleFS()
-{
-  if (!LittleFS.exists(ROTAS_FILE))
-  {
+void carregarRotasLittleFS() {
+  if (!LittleFS.exists(ROTAS_FILE)) {
     Serial.println("📂 Nenhum arquivo de rotas encontrado");
     return;
   }
 
   File file = LittleFS.open(ROTAS_FILE, "r");
-  if (!file)
-  {
+  if (!file) {
     Serial.println("❌ Erro ao abrir arquivo para leitura");
     return;
   }
@@ -190,8 +155,7 @@ void carregarRotasLittleFS()
   DeserializationError error = deserializeJson(doc, file);
   file.close();
 
-  if (error)
-  {
+  if (error) {
     Serial.print("❌ Erro ao parsear JSON: ");
     Serial.println(error.c_str());
     return;
@@ -200,21 +164,18 @@ void carregarRotasLittleFS()
   rotasArmazenadas.clear();
   JsonArray rotasArray = doc["rotas"];
 
-  for (JsonObject rotaObj : rotasArray)
-  {
+  for (JsonObject rotaObj : rotasArray) {
     Rota rota;
     rota.id = rotaObj["id"];
     rota.dataHora = rotaObj["dataHora"].as<String>();
     rota.deviceId = rotaObj["deviceId"].as<String>();
 
     JsonArray comandosArray = rotaObj["comandos"];
-    for (JsonObject cmdObj : comandosArray)
-    {
+    for (JsonObject cmdObj : comandosArray) {
       ComandoRota cmd;
       cmd.tipo = cmdObj["tipo"].as<String>();
       cmd.valor = cmdObj["valor"];
-      if (cmd.tipo == "ROTATE")
-      {
+      if (cmd.tipo == "ROTATE") {
         cmd.direcao = cmdObj["direcao"].as<String>();
       }
       rota.comandos.push_back(cmd);
@@ -227,27 +188,23 @@ void carregarRotasLittleFS()
 }
 
 // Enviar todas as rotas para um cliente específico
-void enviarRotasParaCliente(AsyncWebSocketClient *client)
-{
+void enviarRotasParaCliente(AsyncWebSocketClient *client) {
   DynamicJsonDocument doc(8192);
   doc["channel"] = "SYNC_ROTAS";
   JsonArray rotasArray = doc.createNestedArray("rotas");
 
-  for (const auto &rota : rotasArmazenadas)
-  {
+  for (const auto &rota : rotasArmazenadas) {
     JsonObject rotaObj = rotasArray.createNestedObject();
     rotaObj["id"] = rota.id;
     rotaObj["dataHora"] = rota.dataHora;
 
     JsonArray elementosArray = rotaObj.createNestedArray("elementos");
-    for (const auto &cmd : rota.comandos)
-    {
+    for (const auto &cmd : rota.comandos) {
       JsonObject elemObj = elementosArray.createNestedObject();
       elemObj["tipo"] = (cmd.tipo == "MOVE") ? "distancia" : "rotacao";
       elemObj["valor"] = cmd.valor;
       elemObj["id"] = millis();
-      if (cmd.tipo == "ROTATE")
-      {
+      if (cmd.tipo == "ROTATE") {
         elemObj["direcao"] = cmd.direcao;
       }
     }
@@ -263,29 +220,25 @@ void enviarRotasParaCliente(AsyncWebSocketClient *client)
 // --- Funções de Baixo Nível do Motor da Porta ---
 
 // Para o motor completamente (desliga)
-void pararPorta()
-{
+void pararPorta() {
   digitalWrite(PIN_FRENTE_ESQ, LOW);
   digitalWrite(PIN_TRAS_ESQ, LOW);
 }
 
 // Gira em um sentido (Ex: Abrir)
-void abrirPortaLogica()
-{
+void abrirPortaLogica() {
   digitalWrite(PIN_FRENTE_ESQ, HIGH);
   digitalWrite(PIN_TRAS_ESQ, LOW);
 }
 
 // Gira no outro sentido (Ex: Fechar)
-void fecharPortaLogica()
-{
+void fecharPortaLogica() {
   digitalWrite(PIN_FRENTE_ESQ, LOW);
   digitalWrite(PIN_TRAS_ESQ, HIGH);
 }
 
 // Segura a posição (freio do motor - ambos HIGH)
-void segurarPosicaoPorta()
-{
+void segurarPosicaoPorta() {
   digitalWrite(PIN_FRENTE_ESQ, HIGH);
   digitalWrite(PIN_TRAS_ESQ, HIGH);
 }
@@ -295,186 +248,61 @@ void segurarPosicaoPorta()
 // ===== INÍCIO: FUNÇÕES DO ETA =====
 
 // Função para definir a distância até o destino
-void definirDistanciaDestino(float distancia)
-{
+void definirDistanciaDestino(float distancia) {
   distanciaDestino = distancia;
-  distanciaPercorrida = 0.0; // Reseta a distância percorrida ao definir novo destino
+  distanciaPercorrida = 0.0;  // Reseta a distância percorrida ao definir novo destino
   Serial.printf("Distância até destino definida: %.2f cm\n", distanciaDestino);
 }
 
 // ===== FIM: FUNÇÕES DO ETA =====
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
-             void *arg, uint8_t *data, size_t len)
-{
-  switch (type)
-  {
-  case WS_EVT_CONNECT: // executado quando cliente novo entra
-    Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
-    // Enviar rotas existentes para o novo cliente após um pequeno delay
-    // (aguardar identificação do dispositivo)
-    break;
-  case WS_EVT_DISCONNECT: // executado quando cliente desconecta
-    Serial.printf("WebSocket client #%u disconnected\n", client->id());
-    // Remover dispositivo da lista ao desconectar
-    for (size_t i = 0; i < dispositivosConectados.size(); i++)
-    {
-      if (dispositivosConectados[i].clientId == client->id())
-      {
-        Serial.printf("📤 Dispositivo %s desconectado\n", dispositivosConectados[i].deviceId.c_str());
-        dispositivosConectados.erase(dispositivosConectados.begin() + i);
-        break;
+             void *arg, uint8_t *data, size_t len) {
+  switch (type) {
+    case WS_EVT_CONNECT:  // executado quando cliente novo entra
+      Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+      // Enviar rotas existentes para o novo cliente após um pequeno delay
+      // (aguardar identificação do dispositivo)
+      break;
+    case WS_EVT_DISCONNECT:  // executado quando cliente desconecta
+      Serial.printf("WebSocket client #%u disconnected\n", client->id());
+      // Remover dispositivo da lista ao desconectar
+      for (size_t i = 0; i < dispositivosConectados.size(); i++) {
+        if (dispositivosConectados[i].clientId == client->id()) {
+          Serial.printf("📤 Dispositivo %s desconectado\n", dispositivosConectados[i].deviceId.c_str());
+          dispositivosConectados.erase(dispositivosConectados.begin() + i);
+          break;
+        }
       }
-    }
-    break;
-  case WS_EVT_DATA: // executado quando chega mensagem
-    mensagemRecebida(client, arg, data, len);
-    break;
-  case WS_EVT_PONG:
-  case WS_EVT_ERROR:
-    break;
+      break;
+    case WS_EVT_DATA:  // executado quando chega mensagem
+      mensagemRecebida(client, arg, data, len);
+      break;
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+      break;
   }
 }
-void initWebSocket()
-{
+void initWebSocket() {
   ws.onEvent(onEvent);
   server.addHandler(&ws);
 }
-// funcoes de andar
-void moverMotorEsq(int direcao)
-{
-  if (direcao == 1)
-  {
-    digitalWrite(FRENTE_ESQ, HIGH);
-    digitalWrite(TRAS_ESQ, LOW);
-  }
-  else if (direcao == -1)
-  {
-    digitalWrite(FRENTE_ESQ, LOW);
-    digitalWrite(TRAS_ESQ, HIGH);
-  }
-  else
-  {
-    digitalWrite(FRENTE_ESQ, LOW);
-    digitalWrite(TRAS_ESQ, LOW);
-  }
-}
 
-/**
- * Controla o Motor B
- * direcao: 1 (frente), -1 (trás), 0 (parar/frear)
- */
-void moverMotorDir(int direcao)
-{
-  if (direcao == 1)
-  {
-    digitalWrite(FRENTE_DIR, HIGH);
-    digitalWrite(TRAS_DIR, LOW);
-  }
-  else if (direcao == -1)
-  {
-    digitalWrite(FRENTE_DIR, LOW);
-    digitalWrite(TRAS_DIR, HIGH);
-  }
-  else
-  {
-    digitalWrite(FRENTE_DIR, LOW);
-    digitalWrite(TRAS_DIR, LOW);
-  }
-}
-
-// Função auxiliar para parar tudo
-void pararMotores()
-{
-  moverMotorEsq(0);
-  moverMotorDir(0);
-}
-
-void executarRota(Rota &novaRota)
-{
-  if (PASSO_ROTA < 0){
-    return;
-  }
-  const ComandoRota &cmd = novaRota.comandos[PASSO_ROTA];
-  
-    if (cmd.tipo == "ROTATE")
-    {
-      if (cmd.direcao == "direita")
-      {
-        movimento = "ROTATE_D";
-        total_pulsos_esq = 0;
-        total_pulsos_dir = 0;
-        moverMotorEsq(1);
-        META_PULSOS = 500;
-        ws.textAll("VIRAR A DIREITA \n\n\n\n\n");
-      }
-
-      else if (cmd.direcao == "esquerda")
-      {
-        movimento = "ROTATE_E";
-        total_pulsos_esq = 0;
-        total_pulsos_dir = 0;
-        moverMotorDir(1);
-        META_PULSOS = 500; // VV VER QUANTIDADE BOA AQUI
-        ws.textAll("VIRAR A ESQUERDA \n\n\n\n\n");
-
-      }
-    }
-    else if (cmd.tipo == "MOVE")
-    {
-      movimento = "MOVE";
-      META_PULSOS = cmd.valor * 1000;
-      total_pulsos_esq = 0;
-      total_pulsos_dir = 0;
-
-      moverMotorEsq(1);
-      moverMotorDir(1);
-
-      ws.textAll("FRENTE \n\n\n\n\n");
-
-    }
-  
-}
-
-void proximoComando(Rota &novaRota)
-{
-  PASSO_ROTA++;
-  ws.textAll("Passo rota: " + String(PASSO_ROTA) + "\nquantidade comandos: "+ String(novaRota.comandos.size()));
-  if (PASSO_ROTA < novaRota.comandos.size())
-  {
-    ws.textAll("Indo para a instrução " + String(PASSO_ROTA + 1));
-    executarRota(novaRota);
-    
-  }
-  else
-  {
-    Serial.println("✅ Rota completa!");
-    ws.textAll("{\"channel\":\"ROTA_COMPLETA\",\"status\":\"ok\"}");
-    ROTA_ATUAL = Rota();
-    PASSO_ROTA = -1;
-  }
-
-}
-
-void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *mensagem, size_t len)
-{
+void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *mensagem, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)metadados;
-  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
-  { // verifica se recebe só texto
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {  // verifica se recebe só texto
 
     // Aumentar tamanho do buffer JSON para acomodar rotas maiores
     DynamicJsonDocument doc(4096);
     DeserializationError error = deserializeJson(doc, mensagem, len);
 
-    if (error)
-    {
+    if (error) {
       Serial.print("Falha ao ler JSON: ");
       Serial.println(error.c_str());
       return;
     }
 
-    if (!doc.containsKey("channel"))
-    {
+    if (!doc.containsKey("channel")) {
       Serial.println("JSON recebido não contém a chave 'channel'.");
       return;
     }
@@ -483,17 +311,14 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
     Serial.printf("Canal recebido: %s\n", channel);
 
     // Processar identificação de dispositivo
-    if (strcmp(channel, "DEVICE_ID") == 0)
-    {
+    if (strcmp(channel, "DEVICE_ID") == 0) {
       String deviceId = doc["deviceId"].as<String>();
       String sessionId = doc["sessionId"].as<String>();
 
       // Verificar se dispositivo já existe
       bool dispositivoExistente = false;
-      for (auto &disp : dispositivosConectados)
-      {
-        if (disp.deviceId == deviceId)
-        {
+      for (auto &disp : dispositivosConectados) {
+        if (disp.deviceId == deviceId) {
           // Atualizar informações do dispositivo existente
           disp.clientId = client->id();
           disp.sessionId = sessionId;
@@ -504,8 +329,7 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
         }
       }
 
-      if (!dispositivoExistente)
-      {
+      if (!dispositivoExistente) {
         // Adicionar novo dispositivo
         DispositivoConectado novoDispositivo;
         novoDispositivo.clientId = client->id();
@@ -528,15 +352,12 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
     }
 
     // Processar envio de rotas
-    if (strcmp(channel, "ENVIAR_ROTAS") == 0)
-    {
-      if (ROTA_ATUAL.comandos.size() > 0)
-      {
-        ws.textAll("Rota em andamento!! aguarde"); // VV implementar no front dps
+    if (strcmp(channel, "ENVIAR_ROTAS") == 0) {
+      if (ROTA_ATUAL.comandos.size() > 0) {
+        ws.textAll("Rota em andamento!! aguarde");  // VV implementar no front dps
         return;
       }
-      if (!doc.containsKey("value"))
-      {
+      if (!doc.containsKey("value")) {
         Serial.println("Erro: 'value' não encontrado para ENVIAR_ROTAS");
         return;
       }
@@ -557,19 +378,15 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
 
       // Processar cada comando e calcular distância total
       float distanciaTotal = 0.0;
-      for (JsonObject comandoObj : comandosArray)
-      {
+      for (JsonObject comandoObj : comandosArray) {
         ComandoRota comando;
         comando.tipo = comandoObj["tipo"].as<String>();
 
-        if (comando.tipo == "MOVE")
-        {
+        if (comando.tipo == "MOVE") {
           comando.valor = comandoObj["valor"];
-          distanciaTotal += comando.valor; // Acumula a distância
+          distanciaTotal += comando.valor;  // Acumula a distância
           Serial.printf("  - MOVE: %d\n", comando.valor);
-        }
-        else if (comando.tipo == "ROTATE")
-        {
+        } else if (comando.tipo == "ROTATE") {
           comando.valor = comandoObj["angulo"];
           comando.direcao = comandoObj["direcao"].as<String>();
           Serial.printf("  - ROTATE: %d° para %s\n", comando.valor, comando.direcao.c_str());
@@ -602,14 +419,12 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       rotaObj["dataHora"] = novaRota.dataHora;
 
       JsonArray elementosArray = rotaObj.createNestedArray("elementos");
-      for (const auto &cmd : novaRota.comandos)
-      {
+      for (const auto &cmd : novaRota.comandos) {
         JsonObject elemObj = elementosArray.createNestedObject();
         elemObj["tipo"] = (cmd.tipo == "MOVE") ? "distancia" : "rotacao";
         elemObj["valor"] = cmd.valor;
         elemObj["id"] = millis() + random(1000);
-        if (cmd.tipo == "ROTATE")
-        {
+        if (cmd.tipo == "ROTATE") {
           elemObj["direcao"] = cmd.direcao;
         }
       }
@@ -622,8 +437,7 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
     }
 
     // Processar comando para limpar rotas
-    else if (strcmp(channel, "LIMPAR_ROTAS") == 0)
-    {
+    else if (strcmp(channel, "LIMPAR_ROTAS") == 0) {
       String deviceId = doc.containsKey("deviceId") ? doc["deviceId"].as<String>() : "unknown";
       int totalRotasAntes = rotasArmazenadas.size();
       rotasArmazenadas.clear();
@@ -642,25 +456,19 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
     }
 
     // Processar comando para listar rotas armazenadas
-    else if (strcmp(channel, "LISTAR_ROTAS") == 0)
-    {
+    else if (strcmp(channel, "LISTAR_ROTAS") == 0) {
       Serial.println("=== Rotas Armazenadas ===");
       Serial.printf("Total: %d rotas\n", rotasArmazenadas.size());
 
-      for (size_t i = 0; i < rotasArmazenadas.size(); i++)
-      {
+      for (size_t i = 0; i < rotasArmazenadas.size(); i++) {
         Serial.printf("\nRota %d (ID: %lu):\n", i + 1, rotasArmazenadas[i].id);
         Serial.printf("  Comandos: %d\n", rotasArmazenadas[i].comandos.size());
 
-        for (size_t j = 0; j < rotasArmazenadas[i].comandos.size(); j++)
-        {
+        for (size_t j = 0; j < rotasArmazenadas[i].comandos.size(); j++) {
           ComandoRota cmd = rotasArmazenadas[i].comandos[j];
-          if (cmd.tipo == "MOVE")
-          {
+          if (cmd.tipo == "MOVE") {
             Serial.printf("    %d. MOVE %d\n", j + 1, cmd.valor);
-          }
-          else
-          {
+          } else {
             Serial.printf("    %d. ROTATE %d° %s\n", j + 1, cmd.valor, cmd.direcao.c_str());
           }
         }
@@ -671,115 +479,63 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
     // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
 
     // Processar comando para ABRIR A PORTA
-    else if (strcmp(channel, "ABRIR") == 0)
-    {
+    else if (strcmp(channel, "ABRIR") == 0) {
       Serial.println("Comando: ABRIR. Iniciando abertura...");
-      estadoPorta = ESTADO_PORTA_ABRINDO; // Muda o estado
-      tempoInicioMovimento = millis();    // Marca o tempo de início
+      estadoPorta = ESTADO_PORTA_ABRINDO;  // Muda o estado
+      tempoInicioMovimento = millis();     // Marca o tempo de início
       client->text("{\"status\":\"ok\",\"message\":\"Comando 'ABRIR' recebido. Abrindo...\"}");
     }
 
     // Processar comando para FECHAR A PORTA
-    else if (strcmp(channel, "FECHAR") == 0)
-    {
+    else if (strcmp(channel, "FECHAR") == 0) {
       Serial.println("Comando: FECHAR. Iniciando fechamento...");
-      estadoPorta = ESTADO_PORTA_FECHANDO; // Muda o estado
-      tempoInicioMovimento = millis();     // Marca o tempo de início
+      estadoPorta = ESTADO_PORTA_FECHANDO;  // Muda o estado
+      tempoInicioMovimento = millis();      // Marca o tempo de início
       client->text("{\"status\":\"ok\",\"message\":\"Comando 'FECHAR' recebido. Fechando...\"}");
     }
 
     // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
     // Processar comando para DEFINIR DISTÂNCIA DESTINO
-    else if (strcmp(channel, "DEFINIR_DISTANCIA") == 0)
-    {
-      if (doc.containsKey("value"))
-      {
+    else if (strcmp(channel, "DEFINIR_DISTANCIA") == 0) {
+      if (doc.containsKey("value")) {
         float distancia = doc["value"];
         definirDistanciaDestino(distancia);
         client->text("{\"status\":\"ok\",\"message\":\"Distância até destino definida\"}");
-      }
-      else
-      {
+      } else {
         Serial.println("Erro: 'value' não encontrado para DEFINIR_DISTANCIA");
         client->text("{\"status\":\"error\",\"message\":\"Valor não encontrado\"}");
       }
     }
 
     // Comando genérico
-    else
-    {
+    else {
       float value = doc["value"];
       Serial.printf("Valor recebido: %f\n", value);
     }
   }
 }
 
-String setupVariables(const String &var)
-{
-  if (var == "VARIAVEL1")
-  { // Ai coloa %VARIAVEL1% no HTML, que ai vai ser substituida
+String setupVariables(const String &var) {
+  if (var == "VARIAVEL1") {  // Ai coloa %VARIAVEL1% no HTML, que ai vai ser substituida
     return "Valor da variável";
   }
-  return String(); // para não crashar se nao existir a variável
+  return String();  // para não crashar se nao existir a variável
 }
-void notifyClients(String value)
-{
+void notifyClients(String value) {
   ws.textAll(String(value));
 }
 
-void configuraEncoderEsquerdoPCNT()
-{
-  pcnt_config_t configEncoder = {};
-  configEncoder.pulse_gpio_num = ENC_A_ESQ;
-  configEncoder.ctrl_gpio_num = ENC_B_ESQ;
-  configEncoder.channel = PCNT_CHANNEL_0;
-  configEncoder.unit = PCNT_UNIT_0;
-  configEncoder.pos_mode = PCNT_COUNT_INC;
-  configEncoder.neg_mode = PCNT_COUNT_DIS;
-  configEncoder.hctrl_mode = PCNT_MODE_KEEP;
-  configEncoder.lctrl_mode = PCNT_MODE_REVERSE;
-  pcnt_unit_config(&configEncoder);
-  pcnt_set_filter_value(PCNT_UNIT_0, 1023);
-  pcnt_filter_enable(PCNT_UNIT_0);
-  pcnt_counter_pause(PCNT_UNIT_0);
-  pcnt_counter_clear(PCNT_UNIT_0);
-  pcnt_counter_resume(PCNT_UNIT_0);
-}
-
-void configuraEncoderDireitoPCNT()
-{
-  pcnt_config_t configEncoder = {};
-  configEncoder.pulse_gpio_num = ENC_A_DIR;
-  configEncoder.ctrl_gpio_num = ENC_B_DIR;
-  configEncoder.channel = PCNT_CHANNEL_0;
-  configEncoder.unit = PCNT_UNIT_1;
-  configEncoder.pos_mode = PCNT_COUNT_INC;
-  configEncoder.neg_mode = PCNT_COUNT_DIS;
-  configEncoder.hctrl_mode = PCNT_MODE_KEEP;
-  configEncoder.lctrl_mode = PCNT_MODE_REVERSE;
-  pcnt_unit_config(&configEncoder);
-  pcnt_set_filter_value(PCNT_UNIT_1, 1023);
-  pcnt_filter_enable(PCNT_UNIT_1);
-  pcnt_counter_pause(PCNT_UNIT_1);
-  pcnt_counter_clear(PCNT_UNIT_1);
-  pcnt_counter_resume(PCNT_UNIT_1);
-}
-
-void setup()
-{
+void setup() {
   // Serial port for debugging purposes
   Serial.begin(115200);
 
   // Inicializar LittleFS
   Serial.println("\n--- Inicializando LittleFS ---");
-  if (!LittleFS.begin(true))
-  {
+  if (!LittleFS.begin(true)) {
     Serial.println("❌ Erro ao montar LittleFS");
     Serial.println("⚠ Sistema continuará sem persistência");
-  }
-  else
-  {
+  } else {
     Serial.println("✅ LittleFS montado com sucesso");
 
     // Mostrar informações do sistema de arquivos
@@ -837,8 +593,9 @@ void setup()
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
   // Rota alternativa caso o arquivo não seja encontrado
-  server.onNotFound([](AsyncWebServerRequest *request)
-                    { request->send(404, "text/plain", "Arquivo não encontrado. Faça upload dos arquivos da pasta data/ para o LittleFS."); });
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    request->send(404, "text/plain", "Arquivo não encontrado. Faça upload dos arquivos da pasta data/ para o LittleFS.");
+  });
 
   // Start server
   server.begin();
@@ -847,20 +604,15 @@ void setup()
   Serial.println("Aguardando conexões...\n");
   Serial.println("=================================\n");
 
-  // andar
-  pinMode(FRENTE_ESQ, OUTPUT);
-  pinMode(TRAS_ESQ, OUTPUT);
-  pinMode(FRENTE_DIR, OUTPUT);
-  pinMode(TRAS_DIR, OUTPUT);
-
+  //andar
+  motoresSetup(&ws, &PASSO_ROTA, &movimento, &META_PULSOS, &ROTA_ATUAL, &total_pulsos_esq, &total_pulsos_dir);
   // ENCODER
 
   configuraEncoderEsquerdoPCNT();
   configuraEncoderDireitoPCNT();
 }
 
-void loop()
-{
+void loop() {
   ws.cleanupClients();
 
   // --- MÁQUINA DE ESTADOS DO MOTOR DA PORTA ---
@@ -868,59 +620,54 @@ void loop()
   // sem usar 'delay()' ou 'while()', permitindo que o WebSocket
   // e o servidor web continuem funcionando.
 
-  switch (estadoPorta)
-  {
+  switch (estadoPorta) {
 
-  case ESTADO_PORTA_ABRINDO:
-  {
-    unsigned long tempoDecorrido = millis() - tempoInicioMovimento;
+    case ESTADO_PORTA_ABRINDO:
+      {
+        unsigned long tempoDecorrido = millis() - tempoInicioMovimento;
 
-    // Verifica se o tempo de abertura foi atingido
-    if (tempoDecorrido >= TEMPO_ABERTURA_MS)
-    {
-      Serial.println("Tempo de abertura atingido. Segurando posição.");
-      segurarPosicaoPorta(); // Segura a posição
-      estadoPorta = ESTADO_PORTA_SEGURANDO;
-      ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"ABERTA\"}");
-    }
-    // Caso contrário, continua abrindo
-    else
-    {
-      abrirPortaLogica();
-    }
-  }
-  break;
+        // Verifica se o tempo de abertura foi atingido
+        if (tempoDecorrido >= TEMPO_ABERTURA_MS) {
+          Serial.println("Tempo de abertura atingido. Segurando posição.");
+          segurarPosicaoPorta();  // Segura a posição
+          estadoPorta = ESTADO_PORTA_SEGURANDO;
+          ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"ABERTA\"}");
+        }
+        // Caso contrário, continua abrindo
+        else {
+          abrirPortaLogica();
+        }
+      }
+      break;
 
-  case ESTADO_PORTA_FECHANDO:
-  {
-    unsigned long tempoDecorrido = millis() - tempoInicioMovimento;
+    case ESTADO_PORTA_FECHANDO:
+      {
+        unsigned long tempoDecorrido = millis() - tempoInicioMovimento;
 
-    // Verifica se o tempo de fechamento foi atingido
-    if (tempoDecorrido >= TEMPO_FECHAMENTO_MS)
-    {
-      Serial.println("Tempo de fechamento atingido. Segurando posição.");
-      segurarPosicaoPorta(); // Segura a posição
-      estadoPorta = ESTADO_PORTA_SEGURANDO;
-      ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"FECHADA\"}");
-    }
-    // Caso contrário, continua fechando
-    else
-    {
-      fecharPortaLogica();
-    }
-  }
-  break;
+        // Verifica se o tempo de fechamento foi atingido
+        if (tempoDecorrido >= TEMPO_FECHAMENTO_MS) {
+          Serial.println("Tempo de fechamento atingido. Segurando posição.");
+          segurarPosicaoPorta();  // Segura a posição
+          estadoPorta = ESTADO_PORTA_SEGURANDO;
+          ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"FECHADA\"}");
+        }
+        // Caso contrário, continua fechando
+        else {
+          fecharPortaLogica();
+        }
+      }
+      break;
 
-  case ESTADO_PORTA_SEGURANDO:
-    // Mantém a posição ativa (freio do motor)
-    // O motor fica energizado segurando a porta na posição
-    segurarPosicaoPorta();
-    break;
+    case ESTADO_PORTA_SEGURANDO:
+      // Mantém a posição ativa (freio do motor)
+      // O motor fica energizado segurando a porta na posição
+      segurarPosicaoPorta();
+      break;
 
-  case ESTADO_PORTA_PARADO:
-    // Motor completamente desligado
-    pararPorta();
-    break;
+    case ESTADO_PORTA_PARADO:
+      // Motor completamente desligado
+      pararPorta();
+      break;
   }
   // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
@@ -929,48 +676,40 @@ void loop()
   int16_t parcial_dir = 0;
 
   // --- Leitura Atômica do Encoder ESQUERDO ---
-  if (!meta_esq_atingida)
-  {
+  if (!meta_esq_atingida) {
     pcnt_counter_pause(PCNT_UNIT_0);
     pcnt_get_counter_value(PCNT_UNIT_0, &parcial_esq);
     pcnt_counter_clear(PCNT_UNIT_0);
     pcnt_counter_resume(PCNT_UNIT_0);
 
-    if (parcial_esq != 0)
-    {
+    if (parcial_esq != 0) {
       total_pulsos_esq += (int64_t)parcial_esq;
     }
   }
 
   // --- Leitura Atômica do Encoder DIREITO ---
-  if (!meta_dir_atingida)
-  {
+  if (!meta_dir_atingida) {
     pcnt_counter_pause(PCNT_UNIT_1);
     pcnt_get_counter_value(PCNT_UNIT_1, &parcial_dir);
     pcnt_counter_clear(PCNT_UNIT_1);
     pcnt_counter_resume(PCNT_UNIT_1);
 
-    if (parcial_dir != 0)
-    {
+    if (parcial_dir != 0) {
       total_pulsos_dir += (int64_t)parcial_dir;
     }
   }
 
   // --- Lógica de Parada (individual) ---
-  if (META_PULSOS != 0)
-  {
-    if (movimento == "MOVE")
-    {
-      if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida))
-      {
+  if (META_PULSOS != 0) {
+    if (movimento == "MOVE") {
+      if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida)) {
         meta_esq_atingida = true;
         moverMotorEsq(0);
         Serial.println(">>> META ESQUERDA ATINGIDA! <<<");
         ws.textAll(">>> META ESQUERDA ATINGIDA! <<<");
       }
 
-      if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida))
-      {
+      if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida)) {
         meta_dir_atingida = true;
         moverMotorDir(0);
         Serial.println(">>> META DIREITA ATINGIDA! <<<");
@@ -978,8 +717,7 @@ void loop()
       }
 
       // --- Verificação Final ---
-      if (meta_esq_atingida && meta_dir_atingida)
-      {
+      if (meta_esq_atingida && meta_dir_atingida) {
         // prepara para próxima rota
         META_PULSOS = 0;
         meta_dir_atingida = false;
@@ -995,18 +733,15 @@ void loop()
       }
     }
 
-    else if (movimento == "ROTATE_D")
-    {
-      if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida))
-      {
+    else if (movimento == "ROTATE_D") {
+      if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida)) {
         meta_esq_atingida = true;
         moverMotorEsq(0);
         Serial.println(">>> META ESQUERDA ATINGIDA! <<<");
         ws.textAll(">>> META ESQUERDA ATINGIDA! <<<");
       }
-      if (meta_esq_atingida)
-      {
-       // prepara para próxima rota
+      if (meta_esq_atingida) {
+        // prepara para próxima rota
         META_PULSOS = 0;
         meta_dir_atingida = false;
         meta_esq_atingida = false;
@@ -1018,23 +753,18 @@ void loop()
         aguardandoProximoComando = true;
         ws.textAll("Esperaremos " + String(intervaloEsperaEntreComandos) + " segundos até o próximo comando");
         tempoTerminoComandoAnterior = millis();
-
-
       }
     }
 
-    else if (movimento == "ROTATE_E")
-    {
-      if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida))
-      {
+    else if (movimento == "ROTATE_E") {
+      if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida)) {
         meta_dir_atingida = true;
         moverMotorDir(0);
         Serial.println(">>> META DIREITA ATINGIDA! <<<");
         ws.textAll(">>> META DIREITA ATINGIDA! <<<");
       }
-      if (meta_dir_atingida)
-      {
-       // prepara para próxima rota
+      if (meta_dir_atingida) {
+        // prepara para próxima rota
         META_PULSOS = 0;
         meta_dir_atingida = false;
         meta_esq_atingida = false;
@@ -1051,9 +781,8 @@ void loop()
   }
   // --- Bloco de Impressão (Debug) ---
   unsigned long tempoAtual = millis();
-  if (tempoAtual - tempoPrintAnterior >= intervaloPrint)
-  {
-    tempoPrintAnterior = tempoAtual; // Reinicia o timer de print
+  if (tempoAtual - tempoPrintAnterior >= intervaloPrint) {
+    tempoPrintAnterior = tempoAtual;  // Reinicia o timer de print
 
     // Usa Serial.printf() para formatar a saída.
     // %lld é o especificador para 'long long int' (que é o int64_t)
@@ -1065,16 +794,14 @@ void loop()
     ws.textAll("ESQ: " + String(total_pulsos_esq) + " | DIR: " + String(total_pulsos_dir) + " \n");
   }
   tempoAtual = millis();
-  if (aguardandoProximoComando && (tempoAtual - tempoTerminoComandoAnterior >= intervaloEsperaEntreComandos))
-  {
+  if (aguardandoProximoComando && (tempoAtual - tempoTerminoComandoAnterior >= intervaloEsperaEntreComandos)) {
     aguardandoProximoComando = false;
     ws.textAll(String(intervaloEsperaEntreComandos) + " segundos esperados");
     proximoComando(ROTA_ATUAL);
   }
-
 }
 
 
-//DEPOIS TESTA AI Q COLOCOU PARA ESPERAR 2 SEGUNDOS ATÉ EXECUTAR PRÓXIMA AÇÃO
+//TESTAR SE TEM COMO ENVIAR UMA ROTA ENQUANTO ELA ESTÁ EM EXECUÇÃO
 
 //tirou trens do ETA e da Velocidade
