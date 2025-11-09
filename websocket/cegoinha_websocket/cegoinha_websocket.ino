@@ -4,15 +4,15 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <vector>
-#include "structures_projeto.h"
 #include "driver/pcnt.h"
+#include "structures_projeto.h"
 #include "motores_andar.h"
+#include "dados_littlefs.h"
 
 
 const char *ssid = "cegoinha";
 const char *password = "cegoinha123";
 
-#define ROTAS_FILE "/rotas.json"
 // andar
 
 // ===== CONFIGURAÇÃO MONITORAMENTO DE BATERIA =====
@@ -126,115 +126,6 @@ AsyncWebSocket ws("/ws");
 // ===== Funções LittleFS para Persistência de Rotas =====
 
 // Salvar rotas no LittleFS
-void salvarRotasLittleFS() {
-  DynamicJsonDocument doc(8192);
-  JsonArray rotasArray = doc.createNestedArray("rotas");
-
-  for (const auto &rota : rotasArmazenadas) {
-    JsonObject rotaObj = rotasArray.createNestedObject();
-    rotaObj["id"] = rota.id;
-    rotaObj["dataHora"] = rota.dataHora;
-    rotaObj["deviceId"] = rota.deviceId;
-
-    JsonArray comandosArray = rotaObj.createNestedArray("comandos");
-    for (const auto &cmd : rota.comandos) {
-      JsonObject cmdObj = comandosArray.createNestedObject();
-      cmdObj["tipo"] = cmd.tipo;
-      cmdObj["valor"] = cmd.valor;
-      if (cmd.tipo == "ROTATE") {
-        cmdObj["direcao"] = cmd.direcao;
-      }
-    }
-  }
-
-  File file = LittleFS.open(ROTAS_FILE, "w");
-  if (!file) {
-    Serial.println("❌ Erro ao abrir arquivo para escrita");
-    return;
-  }
-
-  serializeJson(doc, file);
-  file.close();
-  Serial.printf("💾 %d rotas salvas no LittleFS\n", rotasArmazenadas.size());
-}
-
-// Carregar rotas do LittleFS
-void carregarRotasLittleFS() {
-  if (!LittleFS.exists(ROTAS_FILE)) {
-    Serial.println("📂 Nenhum arquivo de rotas encontrado");
-    return;
-  }
-
-  File file = LittleFS.open(ROTAS_FILE, "r");
-  if (!file) {
-    Serial.println("❌ Erro ao abrir arquivo para leitura");
-    return;
-  }
-
-  DynamicJsonDocument doc(8192);
-  DeserializationError error = deserializeJson(doc, file);
-  file.close();
-
-  if (error) {
-    Serial.print("❌ Erro ao parsear JSON: ");
-    Serial.println(error.c_str());
-    return;
-  }
-
-  rotasArmazenadas.clear();
-  JsonArray rotasArray = doc["rotas"];
-
-  for (JsonObject rotaObj : rotasArray) {
-    Rota rota;
-    rota.id = rotaObj["id"];
-    rota.dataHora = rotaObj["dataHora"].as<String>();
-    rota.deviceId = rotaObj["deviceId"].as<String>();
-
-    JsonArray comandosArray = rotaObj["comandos"];
-    for (JsonObject cmdObj : comandosArray) {
-      ComandoRota cmd;
-      cmd.tipo = cmdObj["tipo"].as<String>();
-      cmd.valor = cmdObj["valor"];
-      if (cmd.tipo == "ROTATE") {
-        cmd.direcao = cmdObj["direcao"].as<String>();
-      }
-      rota.comandos.push_back(cmd);
-    }
-
-    rotasArmazenadas.push_back(rota);
-  }
-
-  Serial.printf("✅ %d rotas carregadas do LittleFS\n", rotasArmazenadas.size());
-}
-
-// Enviar todas as rotas para um cliente específico
-void enviarRotasParaCliente(AsyncWebSocketClient *client) {
-  DynamicJsonDocument doc(8192);
-  doc["channel"] = "SYNC_ROTAS";
-  JsonArray rotasArray = doc.createNestedArray("rotas");
-
-  for (const auto &rota : rotasArmazenadas) {
-    JsonObject rotaObj = rotasArray.createNestedObject();
-    rotaObj["id"] = rota.id;
-    rotaObj["dataHora"] = rota.dataHora;
-
-    JsonArray elementosArray = rotaObj.createNestedArray("elementos");
-    for (const auto &cmd : rota.comandos) {
-      JsonObject elemObj = elementosArray.createNestedObject();
-      elemObj["tipo"] = (cmd.tipo == "MOVE") ? "distancia" : "rotacao";
-      elemObj["valor"] = cmd.valor;
-      elemObj["id"] = millis();
-      if (cmd.tipo == "ROTATE") {
-        elemObj["direcao"] = cmd.direcao;
-      }
-    }
-  }
-
-  String jsonString;
-  serializeJson(doc, jsonString);
-  client->text(jsonString);
-  Serial.printf("📤 Rotas sincronizadas para cliente #%u\n", client->id());
-}
 
 // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
 // --- Funções de Baixo Nível do Motor da Porta ---
@@ -567,7 +458,7 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       rotasArmazenadas.clear();
 
       // Limpar arquivo LittleFS
-      LittleFS.remove(ROTAS_FILE);
+      void apagarRotas();
 
       Serial.println("=== Rotas Limpas ===");
       Serial.printf("Device ID: %s\n", deviceId.c_str());
@@ -699,7 +590,7 @@ void setup() {
     Serial.printf("📊 Espaço usado: %d bytes (%.1f%%)\n", usedBytes, (usedBytes * 100.0) / totalBytes);
   }
   Serial.println("------------------------------\n");
-
+  setupLittleFS(&rotasArmazenadas);
   // ===== INÍCIO: CÓDIGO DO ENCODER =====
 
   Serial.println("✅ Encoder configurado nos pinos IO34 e IO35");
