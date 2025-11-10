@@ -3,12 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Sistema de controle de rotas para carrinho autônomo Cegoinha">
+<meta name="theme-color" content="#313C41">
 <title>Cegoinha 🕊️</title>
+<link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="/style.css">
+<link rel="apple-touch-icon" href="/icon-192.png">
 </head>
 <body>
 <div class="main-container">
-<div class="header"><p class="title">Cegoinha 🕊️</p></div>
+<div class="header">
+<p class="title">Cegoinha 🕊️</p>
+<div class="connection-status" id="ws-status">
+<span class="status-dot"></span>
+<span class="status-text">Conectando...</span>
+</div>
+</div>
 <div class="divider divider-top"></div>
 <section class="section rotas-anteriores">
 <div class="section-header"><p class="section-title">Rotas Anteriores</p></div>
@@ -92,6 +102,20 @@
 </section>
 </div>
 </div>
-<script src="/app.js"></script>
+<script src="/app_new.js"></script>
+<script>
+// Registrar Service Worker para PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('✅ Service Worker registrado:', registration.scope);
+            })
+            .catch(error => {
+                console.log('❌ Erro ao registrar Service Worker:', error);
+            });
+    });
+}
+</script>
 </body>
 </html>

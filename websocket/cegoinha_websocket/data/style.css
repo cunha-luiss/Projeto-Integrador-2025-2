@@ -1,7 +1,13 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:#000;line-height:1.5;overflow-x:hidden}
 .main-container{width:100%;min-height:100vh;padding:20px;max-width:1400px;margin:0 auto}
-.header{padding:32px 0 20px 70px}
+.header{padding:32px 0 20px 70px;display:flex;justify-content:space-between;align-items:center}
+.connection-status{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:#f0f0f0;font-size:14px;font-weight:500}
+.status-dot{width:12px;height:12px;border-radius:50%;animation:pulse 2s infinite}
+.status-dot.connecting{background:#FFA500}
+.status-dot.connected{background:#31A208;animation:none}
+.status-dot.disconnected{background:#A21508;animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 .title,.section-title{font-size:32px;font-weight:400;margin-bottom:20px}
 .divider{width:calc(100% + 40px);height:5px;background:#313C41;margin:20px -20px}
 .divider-top{margin-top:0}

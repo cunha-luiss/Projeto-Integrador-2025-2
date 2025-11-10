@@ -4,11 +4,23 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <vector>
+#include "esp_task_wdt.h"
 
 const char *ssid = "cegoinha";
 const char *password = "cegoinha123";
 
 #define ROTAS_FILE "/rotas.json"
+#define ERRORS_LOG_FILE "/errors.log"
+
+// Limites de memória para prevenir overflow
+#define MAX_ROTAS 50
+#define MAX_DISPOSITIVOS 10
+#define MAX_DISTANCIA 10000  // cm
+#define MAX_ANGULO 360       // graus
+#define WATCHDOG_TIMEOUT 10  // segundos
+
+// Mutex para proteção de race condition
+portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
 // ===== INÍCIO: CÓDIGO DO ENCODER E VELOCIDADE =====
 
@@ -49,6 +61,7 @@ float etaSegundos = 0.0;                       // ETA em segundos
 // --- Configuração de Tempo da Porta ---
 #define TEMPO_ABERTURA_MS 3000   // Tempo para abrir completamente (3 segundos)
 #define TEMPO_FECHAMENTO_MS 3000 // Tempo para fechar completamente (3 segundos)
+#define TEMPO_SEGURAR_MS 5000    // Tempo máximo para segurar posição (5 segundos)
 
 // --- Controle de Estado da Porta (Lógica Não-Bloqueante) ---
 #define ESTADO_PORTA_PARADO 0
@@ -58,6 +71,7 @@ float etaSegundos = 0.0;                       // ETA em segundos
 
 int estadoPorta = ESTADO_PORTA_PARADO;  // Estado atual da porta
 unsigned long tempoInicioMovimento = 0; // Marca quando o movimento começou
+unsigned long tempoInicioSegurar = 0;   // Marca quando começou a segurar
 
 // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
@@ -104,10 +118,39 @@ AsyncWebSocket ws("/ws");
 
 // ===== Funções LittleFS para Persistência de Rotas =====
 
+// Função para registrar erros no LittleFS
+void logErro(String erro)
+{
+  File logFile = LittleFS.open(ERRORS_LOG_FILE, "a");
+  if (!logFile)
+  {
+    Serial.println("❌ Erro ao abrir arquivo de log");
+    return;
+  }
+
+  String timestamp = String(millis() / 1000); // segundos desde boot
+  String logEntry = "[" + timestamp + "s] " + erro + "\n";
+  logFile.print(logEntry);
+  logFile.close();
+
+  Serial.print("📝 Log: ");
+  Serial.print(logEntry);
+}
+
 // Salvar rotas no LittleFS
 void salvarRotasLittleFS()
 {
-  DynamicJsonDocument doc(8192);
+  // Calcular tamanho necessário do buffer JSON dinamicamente
+  size_t capacity = JSON_OBJECT_SIZE(1) + JSON_ARRAY_SIZE(rotasArmazenadas.size());
+  for (const auto &rota : rotasArmazenadas)
+  {
+    capacity += JSON_OBJECT_SIZE(3) + JSON_ARRAY_SIZE(rota.comandos.size());
+    capacity += rota.comandos.size() * JSON_OBJECT_SIZE(3);
+    capacity += rota.dataHora.length() + rota.deviceId.length();
+  }
+  capacity += 512; // margem de segurança
+
+  DynamicJsonDocument doc(capacity);
   JsonArray rotasArray = doc.createNestedArray("rotas");
 
   for (const auto &rota : rotasArmazenadas)
@@ -133,13 +176,14 @@ void salvarRotasLittleFS()
   File file = LittleFS.open(ROTAS_FILE, "w");
   if (!file)
   {
+    logErro("Erro ao abrir arquivo para escrita: " + String(ROTAS_FILE));
     Serial.println("❌ Erro ao abrir arquivo para escrita");
     return;
   }
 
   serializeJson(doc, file);
   file.close();
-  Serial.printf("💾 %d rotas salvas no LittleFS\n", rotasArmazenadas.size());
+  Serial.printf("💾 %d rotas salvas no LittleFS (buffer: %d bytes)\n", rotasArmazenadas.size(), capacity);
 }
 
 // Carregar rotas do LittleFS
@@ -154,16 +198,22 @@ void carregarRotasLittleFS()
   File file = LittleFS.open(ROTAS_FILE, "r");
   if (!file)
   {
+    logErro("Erro ao abrir arquivo para leitura: " + String(ROTAS_FILE));
     Serial.println("❌ Erro ao abrir arquivo para leitura");
     return;
   }
 
-  DynamicJsonDocument doc(8192);
+  // Calcular tamanho necessário baseado no tamanho do arquivo
+  size_t fileSize = file.size();
+  size_t capacity = fileSize + 512; // margem de segurança
+
+  DynamicJsonDocument doc(capacity);
   DeserializationError error = deserializeJson(doc, file);
   file.close();
 
   if (error)
   {
+    logErro("Erro ao parsear JSON: " + String(error.c_str()));
     Serial.print("❌ Erro ao parsear JSON: ");
     Serial.println(error.c_str());
     return;
@@ -201,7 +251,16 @@ void carregarRotasLittleFS()
 // Enviar todas as rotas para um cliente específico
 void enviarRotasParaCliente(AsyncWebSocketClient *client)
 {
-  DynamicJsonDocument doc(8192);
+  // Calcular tamanho necessário do buffer JSON dinamicamente
+  size_t capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(rotasArmazenadas.size());
+  for (const auto &rota : rotasArmazenadas)
+  {
+    capacity += JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(rota.comandos.size());
+    capacity += rota.comandos.size() * JSON_OBJECT_SIZE(4);
+  }
+  capacity += 1024; // margem de segurança
+
+  DynamicJsonDocument doc(capacity);
   doc["channel"] = "SYNC_ROTAS";
   JsonArray rotasArray = doc.createNestedArray("rotas");
 
@@ -271,6 +330,9 @@ void IRAM_ATTR encoderISR()
   // Lê o estado do canal B para determinar a direção
   int estadoB = digitalRead(ENCODER_PIN_B);
 
+  // Proteção contra race condition usando critical section
+  portENTER_CRITICAL_ISR(&timerMux);
+
   // Se B está HIGH quando A muda, está girando para frente
   // Se B está LOW quando A muda, está girando para trás
   if (estadoB == HIGH)
@@ -281,6 +343,8 @@ void IRAM_ATTR encoderISR()
   {
     contadorPulsos--;
   }
+
+  portEXIT_CRITICAL_ISR(&timerMux);
 }
 
 // Função para calcular e enviar a velocidade
@@ -294,11 +358,11 @@ void calcularEEnviarVelocidade()
     // Calcula o tempo decorrido em segundos
     float tempoDecorrido = (tempoAtual - ultimoTempoCalculo) / 1000.0;
 
-    // Desabilita interrupções temporariamente para ler o contador
-    noInterrupts();
+    // Desabilita interrupções temporariamente para ler o contador (proteção contra race condition)
+    portENTER_CRITICAL(&timerMux);
     long pulsos = contadorPulsos;
     contadorPulsos = 0; // Reseta o contador
-    interrupts();
+    portEXIT_CRITICAL(&timerMux);
 
     // Calcula o número de revoluções
     float revolucoes = pulsos / PULSOS_POR_REVOLUCAO;
@@ -437,20 +501,26 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
   { // verifica se recebe só texto
 
-    // Aumentar tamanho do buffer JSON para acomodar rotas maiores
-    DynamicJsonDocument doc(4096);
+    // Calcular tamanho necessário do buffer baseado no tamanho da mensagem
+    size_t capacity = len + 512; // margem de segurança
+    DynamicJsonDocument doc(capacity);
     DeserializationError error = deserializeJson(doc, mensagem, len);
 
     if (error)
     {
-      Serial.print("Falha ao ler JSON: ");
-      Serial.println(error.c_str());
+      String erro = "Falha ao ler JSON: " + String(error.c_str());
+      logErro(erro);
+      Serial.print("❌ ");
+      Serial.println(erro);
+      client->text("{\"status\":\"error\",\"message\":\"JSON inválido\"}");
       return;
     }
 
     if (!doc.containsKey("channel"))
     {
-      Serial.println("JSON recebido não contém a chave 'channel'.");
+      logErro("JSON recebido não contém a chave 'channel'");
+      Serial.println("❌ JSON recebido não contém a chave 'channel'.");
+      client->text("{\"status\":\"error\",\"message\":\"Campo 'channel' obrigatório\"}");
       return;
     }
 
@@ -481,6 +551,15 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
 
       if (!dispositivoExistente)
       {
+        // Verificar limite de dispositivos (proteção contra overflow)
+        if (dispositivosConectados.size() >= MAX_DISPOSITIVOS)
+        {
+          logErro("Limite de dispositivos atingido (" + String(MAX_DISPOSITIVOS) + ")");
+          Serial.printf("⚠️ Limite de dispositivos atingido: %d\n", MAX_DISPOSITIVOS);
+          client->text("{\"status\":\"error\",\"message\":\"Limite de dispositivos atingido\"}");
+          return;
+        }
+
         // Adicionar novo dispositivo
         DispositivoConectado novoDispositivo;
         novoDispositivo.clientId = client->id();
@@ -507,12 +586,39 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
     {
       if (!doc.containsKey("value"))
       {
-        Serial.println("Erro: 'value' não encontrado para ENVIAR_ROTAS");
+        logErro("Campo 'value' não encontrado para ENVIAR_ROTAS");
+        Serial.println("❌ Erro: 'value' não encontrado para ENVIAR_ROTAS");
+        client->text("{\"status\":\"error\",\"message\":\"Campo 'value' obrigatório\"}");
+        return;
+      }
+
+      if (!doc["value"].is<JsonArray>())
+      {
+        logErro("Campo 'value' deve ser um array");
+        Serial.println("❌ Erro: 'value' deve ser um array");
+        client->text("{\"status\":\"error\",\"message\":\"Campo 'value' deve ser array\"}");
         return;
       }
 
       String deviceId = doc.containsKey("deviceId") ? doc["deviceId"].as<String>() : "unknown";
       JsonArray comandosArray = doc["value"].as<JsonArray>();
+
+      // Validar número de comandos
+      if (comandosArray.size() == 0)
+      {
+        logErro("Rota vazia recebida");
+        Serial.println("❌ Erro: Rota não pode estar vazia");
+        client->text("{\"status\":\"error\",\"message\":\"Rota não pode estar vazia\"}");
+        return;
+      }
+
+      if (comandosArray.size() > 100)
+      {
+        logErro("Rota com muitos comandos: " + String(comandosArray.size()));
+        Serial.println("❌ Erro: Rota com muitos comandos");
+        client->text("{\"status\":\"error\",\"message\":\"Máximo de 100 comandos por rota\"}");
+        return;
+      }
 
       // Criar nova rota
       Rota novaRota;
@@ -529,20 +635,94 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       float distanciaTotal = 0.0;
       for (JsonObject comandoObj : comandosArray)
       {
+        // Validar tipo do comando
+        if (!comandoObj.containsKey("tipo"))
+        {
+          logErro("Comando sem campo 'tipo'");
+          Serial.println("❌ Erro: Comando sem campo 'tipo'");
+          client->text("{\"status\":\"error\",\"message\":\"Comando sem campo 'tipo'\"}");
+          return;
+        }
+
         ComandoRota comando;
         comando.tipo = comandoObj["tipo"].as<String>();
 
         if (comando.tipo == "MOVE")
         {
-          comando.valor = comandoObj["valor"];
-          distanciaTotal += comando.valor; // Acumula a distância
+          // Validar campo valor
+          if (!comandoObj.containsKey("valor") || !comandoObj["valor"].is<int>())
+          {
+            logErro("Comando MOVE sem 'valor' válido");
+            Serial.println("❌ Erro: Comando MOVE sem 'valor' válido");
+            client->text("{\"status\":\"error\",\"message\":\"Comando MOVE precisa de 'valor' inteiro\"}");
+            return;
+          }
+
+          int valor = comandoObj["valor"];
+
+          // Validar limites
+          if (valor <= 0 || valor > MAX_DISTANCIA)
+          {
+            logErro("Valor de distância inválido: " + String(valor));
+            Serial.printf("❌ Erro: Distância deve estar entre 1 e %d cm\n", MAX_DISTANCIA);
+            client->text("{\"status\":\"error\",\"message\":\"Distância inválida\"}");
+            return;
+          }
+
+          comando.valor = valor;
+          distanciaTotal += valor; // Acumula a distância
           Serial.printf("  - MOVE: %d\n", comando.valor);
         }
         else if (comando.tipo == "ROTATE")
         {
-          comando.valor = comandoObj["angulo"];
-          comando.direcao = comandoObj["direcao"].as<String>();
+          // Validar campo angulo
+          if (!comandoObj.containsKey("angulo") || !comandoObj["angulo"].is<int>())
+          {
+            logErro("Comando ROTATE sem 'angulo' válido");
+            Serial.println("❌ Erro: Comando ROTATE sem 'angulo' válido");
+            client->text("{\"status\":\"error\",\"message\":\"Comando ROTATE precisa de 'angulo' inteiro\"}");
+            return;
+          }
+
+          int angulo = comandoObj["angulo"];
+
+          // Validar limites
+          if (angulo <= 0 || angulo > MAX_ANGULO)
+          {
+            logErro("Valor de ângulo inválido: " + String(angulo));
+            Serial.printf("❌ Erro: Ângulo deve estar entre 1 e %d graus\n", MAX_ANGULO);
+            client->text("{\"status\":\"error\",\"message\":\"Ângulo inválido\"}");
+            return;
+          }
+
+          // Validar direção
+          if (!comandoObj.containsKey("direcao"))
+          {
+            logErro("Comando ROTATE sem 'direcao'");
+            Serial.println("❌ Erro: Comando ROTATE sem 'direcao'");
+            client->text("{\"status\":\"error\",\"message\":\"Comando ROTATE precisa de 'direcao'\"}");
+            return;
+          }
+
+          String direcao = comandoObj["direcao"].as<String>();
+          if (direcao != "direita" && direcao != "esquerda")
+          {
+            logErro("Direção inválida: " + direcao);
+            Serial.println("❌ Erro: Direção deve ser 'direita' ou 'esquerda'");
+            client->text("{\"status\":\"error\",\"message\":\"Direção deve ser 'direita' ou 'esquerda'\"}");
+            return;
+          }
+
+          comando.valor = angulo;
+          comando.direcao = direcao;
           Serial.printf("  - ROTATE: %d° para %s\n", comando.valor, comando.direcao.c_str());
+        }
+        else
+        {
+          logErro("Tipo de comando inválido: " + comando.tipo);
+          Serial.printf("❌ Erro: Tipo de comando inválido: %s\n", comando.tipo.c_str());
+          client->text("{\"status\":\"error\",\"message\":\"Tipo de comando deve ser MOVE ou ROTATE\"}");
+          return;
         }
 
         novaRota.comandos.push_back(comando);
@@ -552,9 +732,16 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       definirDistanciaDestino(distanciaTotal);
       Serial.printf("📏 Distância total da rota: %.2f cm\n", distanciaTotal);
 
+      // Verificar limite de rotas e aplicar FIFO se necessário
+      if (rotasArmazenadas.size() >= MAX_ROTAS)
+      {
+        Serial.printf("⚠️ Limite de rotas atingido (%d). Removendo rota mais antiga.\n", MAX_ROTAS);
+        rotasArmazenadas.erase(rotasArmazenadas.begin()); // Remove a primeira (mais antiga)
+      }
+
       // Adicionar rota ao armazenamento
       rotasArmazenadas.push_back(novaRota);
-      Serial.printf("Rota armazenada! Total de rotas: %d\n", rotasArmazenadas.size());
+      Serial.printf("✅ Rota armazenada! Total de rotas: %d\n", rotasArmazenadas.size());
 
       // Salvar no LittleFS
       salvarRotasLittleFS();
@@ -705,6 +892,13 @@ void setup()
   Serial.println("    CEGOINHA ESP32 - Iniciando");
   Serial.println("=================================");
 
+  // Configurar Watchdog Timer
+  Serial.println("\n--- Configurando Watchdog Timer ---");
+  esp_task_wdt_init(WATCHDOG_TIMEOUT, true); // timeout em segundos, enable panic
+  esp_task_wdt_add(NULL);                    // adicionar task atual
+  Serial.printf("✅ Watchdog Timer configurado: %d segundos\n", WATCHDOG_TIMEOUT);
+  Serial.println("-----------------------------------\n");
+
   // Inicializar LittleFS
   Serial.println("\n--- Inicializando LittleFS ---");
   if (!LittleFS.begin(true))
@@ -796,6 +990,9 @@ void setup()
 
 void loop()
 {
+  // Resetar watchdog timer a cada iteração
+  esp_task_wdt_reset();
+
   ws.cleanupClients();
 
   // ===== INÍCIO: CÓDIGO DO ENCODER =====
@@ -825,9 +1022,10 @@ void loop()
     // Verifica se o tempo de abertura foi atingido
     if (tempoDecorrido >= TEMPO_ABERTURA_MS)
     {
-      Serial.println("Tempo de abertura atingido. Segurando posição.");
+      Serial.println("✅ Tempo de abertura atingido. Segurando posição.");
       segurarPosicaoPorta(); // Segura a posição
       estadoPorta = ESTADO_PORTA_SEGURANDO;
+      tempoInicioSegurar = millis(); // Marca quando começou a segurar
       ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"ABERTA\"}");
     }
     // Caso contrário, continua abrindo
@@ -845,9 +1043,10 @@ void loop()
     // Verifica se o tempo de fechamento foi atingido
     if (tempoDecorrido >= TEMPO_FECHAMENTO_MS)
     {
-      Serial.println("Tempo de fechamento atingido. Segurando posição.");
+      Serial.println("✅ Tempo de fechamento atingido. Segurando posição.");
       segurarPosicaoPorta(); // Segura a posição
       estadoPorta = ESTADO_PORTA_SEGURANDO;
+      tempoInicioSegurar = millis(); // Marca quando começou a segurar
       ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"FECHADA\"}");
     }
     // Caso contrário, continua fechando
@@ -859,10 +1058,24 @@ void loop()
   break;
 
   case ESTADO_PORTA_SEGURANDO:
-    // Mantém a posição ativa (freio do motor)
-    // O motor fica energizado segurando a porta na posição
-    segurarPosicaoPorta();
-    break;
+  {
+    // Verificar timeout para economizar energia
+    unsigned long tempoSegurando = millis() - tempoInicioSegurar;
+
+    if (tempoSegurando >= TEMPO_SEGURAR_MS)
+    {
+      Serial.println("⏱️ Timeout de segurar atingido. Parando motor para economizar energia.");
+      pararPorta();
+      estadoPorta = ESTADO_PORTA_PARADO;
+      ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"PARADO\"}");
+    }
+    else
+    {
+      // Mantém a posição ativa (freio do motor)
+      segurarPosicaoPorta();
+    }
+  }
+  break;
 
   case ESTADO_PORTA_PARADO:
     // Motor completamente desligado
