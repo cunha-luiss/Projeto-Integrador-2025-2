@@ -39,7 +39,7 @@ volatile bool aguardandoProximoComando = false;
 
 // --- Variáveis para o Timer de Impressão ---
 unsigned long tempoPrintAnterior = 0;
-const unsigned long intervaloPrint = 1500;  // Imprime a cada 1s
+const unsigned long intervaloPrint = 1500;  // Imprime a cada 1,5s
 
 // ===== INÍCIO: CÓDIGO DO ENCODER E VELOCIDADE =====
 
@@ -62,10 +62,6 @@ float distanciaPercorrida = 0.0;  // Distância acumulada percorrida desde o in�
 unsigned long ultimoTempoCalculoETA = 0;
 const unsigned long intervaloCalculoETA = 500;  // Calcular ETA a cada 500ms
 float etaSegundos = 0.0;                        // ETA em segundos
-
-// ===== FIM: CÓDIGO DO ENCODER E VELOCIDADE =====
-
-// ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
 
 // --- Pinos do Motor da Porta (L298N) ---
 // Mude estes pinos conforme a sua ligação real
