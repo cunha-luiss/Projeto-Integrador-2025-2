@@ -78,6 +78,9 @@ void moverMotorDir(int direcao) {
 void pararMotores() {
   moverMotorEsq(0);
   moverMotorDir(0);
+  *PASSO_ROTA = -1;
+  *META_PULSOS = 0;
+  *ROTA_ATUAL = Rota();
 }
 
 void executarRota(Rota &novaRota) {
@@ -167,4 +170,9 @@ void configuraEncoderDireitoPCNT() {
   pcnt_counter_pause(PCNT_UNIT_1);
   pcnt_counter_clear(PCNT_UNIT_1);
   pcnt_counter_resume(PCNT_UNIT_1);
+}
+
+int passoRota(){
+  if (PASSO_ROTA == nullptr) return -1;
+  return *PASSO_ROTA;
 }

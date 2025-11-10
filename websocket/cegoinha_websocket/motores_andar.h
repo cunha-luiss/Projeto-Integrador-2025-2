@@ -15,4 +15,5 @@ void moverMotorEsq(int direcao);
 void motoresSetup(AsyncWebSocket *pws, int *pPASSO_ROTA, String *pmovimento, int64_t *pMETA_PULSOS, Rota *pROTA_ATUAL, volatile int64_t *ptotal_pulsos_esq, volatile int64_t *ptotal_pulsos_dir);
 void configuraEncoderDireitoPCNT();
 void configuraEncoderEsquerdoPCNT();
+int passoRota();
 #endif
