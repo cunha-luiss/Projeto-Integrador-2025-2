@@ -33,7 +33,7 @@ float batteryVoltageFiltered = 7.4;
 const float VOLTAGE_FILTER_ALPHA = 0.1; // Filtro passa-baixa (0.0 a 1.0)
 
 unsigned long lastBatteryUpdate = 0;
-const unsigned long BATTERY_UPDATE_INTERVAL = 60000; // Atualiza a cada 1 min
+const unsigned long BATTERY_UPDATE_INTERVAL = 30000; // Atualiza a cada 1 min
 
 // para contar pulsos
 volatile int64_t total_pulsos_esq = 0;
