@@ -13,12 +13,12 @@
 #define ENC_B_ESQ 35
 
 // Define os pinos para o Motor direito
-#define FRENTE_DIR 25
-#define TRAS_DIR 26
+#define FRENTE_DIR 26
+#define TRAS_DIR 25
 #define ENC_A_DIR 33
 #define ENC_B_DIR 32
 
-#define VELOCIDADE 64 // Valor de 0 a 255
+#define VELOCIDADE 128 // Valor de 0 a 255
 
 static AsyncWebSocket *ws = nullptr;
 static int *PASSO_ROTA = 0;
@@ -108,7 +108,7 @@ void executarRota(Rota &novaRota) {
     }
   } else if (cmd.tipo == "MOVE") {
     *movimento = "MOVE";
-    *META_PULSOS = cmd.valor * 1000;
+    *META_PULSOS = (int64_t)ceil(cmd.valor * 2.91);
     *total_pulsos_esq = 0;
     *total_pulsos_dir = 0;
 
