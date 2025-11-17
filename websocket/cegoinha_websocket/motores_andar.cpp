@@ -18,6 +18,8 @@
 #define ENC_A_DIR 33
 #define ENC_B_DIR 32
 
+#define VELOCIDADE 64 // Valor de 0 a 255
+
 static AsyncWebSocket *ws = nullptr;
 static int *PASSO_ROTA = 0;
 static String *movimento = nullptr;
@@ -46,14 +48,14 @@ void motoresSetup(AsyncWebSocket *pws, int *pPASSO_ROTA, String *pmovimento, int
 // funcoes de andar
 void moverMotorEsq(int direcao) {
   if (direcao == 1) {
-    digitalWrite(FRENTE_ESQ, HIGH);
-    digitalWrite(TRAS_ESQ, LOW);
+    analogWrite(FRENTE_ESQ, VELOCIDADE);
+    analogWrite(TRAS_ESQ, LOW);
   } else if (direcao == -1) {
-    digitalWrite(FRENTE_ESQ, LOW);
-    digitalWrite(TRAS_ESQ, HIGH);
+    analogWrite(FRENTE_ESQ, LOW);
+    analogWrite(TRAS_ESQ, VELOCIDADE);
   } else {
-    digitalWrite(FRENTE_ESQ, LOW);
-    digitalWrite(TRAS_ESQ, LOW);
+    analogWrite(FRENTE_ESQ, LOW);
+    analogWrite(TRAS_ESQ, LOW);
   }
 }
 
@@ -63,14 +65,14 @@ void moverMotorEsq(int direcao) {
  */
 void moverMotorDir(int direcao) {
   if (direcao == 1) {
-    digitalWrite(FRENTE_DIR, HIGH);
-    digitalWrite(TRAS_DIR, LOW);
+    analogWrite(FRENTE_DIR, VELOCIDADE);
+    analogWrite(TRAS_DIR, LOW);
   } else if (direcao == -1) {
-    digitalWrite(FRENTE_DIR, LOW);
-    digitalWrite(TRAS_DIR, HIGH);
+    analogWrite(FRENTE_DIR, LOW);
+    analogWrite(TRAS_DIR, VELOCIDADE);
   } else {
-    digitalWrite(FRENTE_DIR, LOW);
-    digitalWrite(TRAS_DIR, LOW);
+    analogWrite(FRENTE_DIR, LOW);
+    analogWrite(TRAS_DIR, LOW);
   }
 }
 
