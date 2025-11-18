@@ -38,7 +38,7 @@ Projeto-Integrador-2025-2/
 - Computador ou smartphone para acessar a interface web
 
 #### Software
-- **Arduino IDE** (versão 3.x)
+- **Arduino IDE** (versão 3.x ou superior)
 - **Bibliotecas Arduino** (instalação detalhada abaixo)
 
 ### 2. Instalação das Bibliotecas
