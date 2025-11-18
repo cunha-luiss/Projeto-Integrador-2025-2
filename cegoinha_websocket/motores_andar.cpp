@@ -13,8 +13,8 @@
 #define ENC_B_ESQ 35
 
 // Define os pinos para o Motor direito
-#define FRENTE_DIR 25
-#define TRAS_DIR 26
+#define FRENTE_DIR 26
+#define TRAS_DIR 25
 #define ENC_A_DIR 33
 #define ENC_B_DIR 32
 
