@@ -1,0 +1,58 @@
+# Arduino/ESP32
+*.hex
+*.elf
+*.bin
+*.map
+
+# Platformio
+.pio/
+.pioenvs/
+.piolibdeps/
+lib/
+build/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Node modules (se usar Node.js para alguma ferramenta)
+node_modules/
+
+# Python (se usar scripts Python)
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+
+# IDE - JetBrains
+.idea/
+*.iml
+
+# Backup files
+*.bak
+*.backup
