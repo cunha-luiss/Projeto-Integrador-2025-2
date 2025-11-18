@@ -203,18 +203,12 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
 
 ---
 
-## 🔄 Atualizações e Manutenção
+## 📝 Notas Importantes
 
-### Como atualizar o código
-
-1. Baixe a versão mais recente do repositório
-2. Abra o arquivo `cegoinha_websocket.ino` no Arduino IDE
-3. Faça o upload normalmente
-4. **IMPORTANTE:** Após o upload, acesse a interface e pressione `Ctrl + F5`
-
-### Backup das rotas
-
-As rotas são armazenadas automaticamente no arquivo `/rotas.json` na flash do ESP32. Para fazer backup, use ferramentas de acesso ao LittleFS (ESP32 Filesystem Uploader)
+- **Não use os arquivos de teste:** Apenas `cegoinha_websocket.ino` é mantido e funcional
+- **Sempre faça Ctrl+F5:** Após qualquer upload, force atualização no navegador
+- **Mantenha o Monitor Serial aberto:** Útil para debug e monitoramento
+- **Bateria:** O sistema calcula consumo estimado baseado em 1.8km/h e 50Wh/m
 
 ---
 
