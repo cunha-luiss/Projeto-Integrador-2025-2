@@ -13,6 +13,7 @@ const char *ssid = "cegoinha";
 const char *password = "cegoinha123";
 
 #define ROTAS_FILE "/rotas.json"
+// andar
 
 // ===== CONFIGURAÇÃO MONITORAMENTO DE BATERIA =====
 #define BATTERY_ADC_PIN 36        // GPIO36 (VP) - Pino ADC para leitura da bateria
@@ -32,7 +33,7 @@ float batteryVoltageFiltered = 7.4;
 const float VOLTAGE_FILTER_ALPHA = 0.1; // Filtro passa-baixa (0.0 a 1.0)
 
 unsigned long lastBatteryUpdate = 0;
-const unsigned long BATTERY_UPDATE_INTERVAL = 30000; // Atualiza a cada 1 min
+const unsigned long BATTERY_UPDATE_INTERVAL = 60000; // Atualiza a cada 1 min
 
 // para contar pulsos
 volatile int64_t total_pulsos_esq = 0;
@@ -60,7 +61,7 @@ volatile bool aguardandoProximoComando = false;
 unsigned long tempoPrintAnterior = 0;
 const unsigned long intervaloPrint = 1500;  // Imprime a cada 1s
 
-
+// ===== INÍCIO: CÓDIGO DO ENCODER E VELOCIDADE =====
 
 // --- Parâmetros do Motor e Encoder ---
 #define PULSOS_POR_REVOLUCAO 20.0  // Número de pulsos por revolução do encoder (ajuste conforme seu motor)
@@ -82,7 +83,9 @@ unsigned long ultimoTempoCalculoETA = 0;
 const unsigned long intervaloCalculoETA = 500;  // Calcular ETA a cada 500ms
 float etaSegundos = 0.0;                        // ETA em segundos
 
-/* ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
+// ===== FIM: CÓDIGO DO ENCODER E VELOCIDADE =====
+
+// ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
 
 // --- Pinos do Motor da Porta (L298N) ---
 // Mude estes pinos conforme a sua ligação real
@@ -103,7 +106,9 @@ float etaSegundos = 0.0;                        // ETA em segundos
 int estadoPorta = ESTADO_PORTA_PARADO;   // Estado atual da porta
 unsigned long tempoInicioMovimento = 0;  // Marca quando o movimento começou
 
-*/
+// ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
+
+// Estrutura para armazenar informações do dispositivo conectado
 
 
 // Mapa de dispositivos conectados
@@ -112,6 +117,13 @@ std::vector<DispositivoConectado> dispositivosConectados;
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
+
+// HTML, CSS e JS agora são servidos do LittleFS (pasta data/)
+// Para fazer upload dos arquivos para a placa:
+// 1. Arduino IDE: Instale o plugin "ESP32 Sketch Data Upload"
+// Os arquivos em cegoinha_websocket/data/ serão enviados para o LittleFS
+
+// ===== Funções LittleFS para Persistência de Rotas =====
 
 // Salvar rotas no LittleFS
 void salvarRotasLittleFS() {
@@ -224,7 +236,7 @@ void enviarRotasParaCliente(AsyncWebSocketClient *client) {
   Serial.printf("📤 Rotas sincronizadas para cliente #%u\n", client->id());
 }
 
-/* ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
+// ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
 // --- Funções de Baixo Nível do Motor da Porta ---
 
 // Para o motor completamente (desliga)
@@ -250,7 +262,9 @@ void segurarPosicaoPorta() {
   digitalWrite(PIN_FRENTE_ESQ, HIGH);
   digitalWrite(PIN_TRAS_ESQ, HIGH);
 }
-*/
+// ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
+
+// ===== INÍCIO: FUNÇÕES DE MONITORAMENTO DA BATERIA =====
 
 /**
  * Lê a tensão da bateria através do ADC com divisor de tensão
@@ -350,6 +364,9 @@ void verificarBateriaCritica() {
   }
 }
 
+// ===== FIM: FUNÇÕES DE MONITORAMENTO DA BATERIA =====
+
+// ===== INÍCIO: FUNÇÕES DO ETA =====
 
 // Função para definir a distância até o destino
 void definirDistanciaDestino(float distancia) {
@@ -358,6 +375,7 @@ void definirDistanciaDestino(float distancia) {
   Serial.printf("Distância até destino definida: %.2f cm\n", distanciaDestino);
 }
 
+// ===== FIM: FUNÇÕES DO ETA =====
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
              void *arg, uint8_t *data, size_t len) {
@@ -582,6 +600,7 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       Serial.println("=========================\n");
     }
 
+    // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
 
     // Processar comando para ABRIR A PORTA
     else if (strcmp(channel, "ABRIR") == 0) {
@@ -598,6 +617,8 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       tempoInicioMovimento = millis();      // Marca o tempo de início
       client->text("{\"status\":\"ok\",\"message\":\"Comando 'FECHAR' recebido. Fechando...\"}");
     }
+
+    // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
     // Processar comando para PARAR O CARRINHO
     else if (strcmp(channel, "PARAR_CARRINHO") == 0)
@@ -679,20 +700,26 @@ void setup() {
   }
   Serial.println("------------------------------\n");
 
+  // ===== INÍCIO: CÓDIGO DO ENCODER =====
+
   Serial.println("✅ Encoder configurado nos pinos IO34 e IO35");
   Serial.println("✅ Interrupção anexada ao canal A");
   Serial.println("------------------------------\n");
+  // ===== FIM: CÓDIGO DO ENCODER =====
 
-
+  // ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
   Serial.println("--- Setup do Motor da Porta ---");
   // --- Setup do Motor ---
   pinMode(PIN_FRENTE_ESQ, OUTPUT);
   pinMode(PIN_TRAS_ESQ, OUTPUT);
+  // IMPORTANTE: Conecte o pino ENA do L298N direto ao VCC (5V ou 12V)
+  // para que o motor sempre tenha potência máxima
 
   // Garante que o motor comece parado
   pararPorta();
   Serial.println("✅ Driver L298N (Porta) configurado.");
   Serial.println("------------------------------\n");
+  // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
   // Inicializar vetores
   rotasArmazenadas.clear();
@@ -735,6 +762,7 @@ void setup() {
   //andar
   motoresSetup(&ws, &PASSO_ROTA, &movimento, &META_PULSOS, &ROTA_ATUAL, &total_pulsos_esq, &total_pulsos_dir);
 
+  // ===== INÍCIO: CONFIGURAÇÃO ADC BATERIA =====
   Serial.println("\n--- Configurando Monitoramento de Bateria ---");
   
   // Configura o pino ADC para leitura da bateria
@@ -752,6 +780,7 @@ void setup() {
   
   Serial.println("✅ Monitoramento de bateria configurado");
   Serial.println("---------------------------------------------\n");
+  // ===== FIM: CONFIGURAÇÃO ADC BATERIA =====
 
   // ENCODER
 
@@ -762,6 +791,7 @@ void setup() {
 void loop() {
   ws.cleanupClients();
 
+  // ===== MONITORAMENTO DE BATERIA =====
   unsigned long currentTime = millis();
   if (currentTime - lastBatteryUpdate >= BATTERY_UPDATE_INTERVAL) {
     lastBatteryUpdate = currentTime;
@@ -770,7 +800,7 @@ void loop() {
     enviarDadosBateria();
     verificarBateriaCritica();
   }
-  
+  // ===== FIM MONITORAMENTO DE BATERIA =====
 
   // --- MÁQUINA DE ESTADOS DO MOTOR DA PORTA ---
   // Esta parte roda continuamente, verificando o estado da porta
@@ -826,6 +856,7 @@ void loop() {
       pararPorta();
       break;
   }
+  // ===== FIM: CÓDIGO DA PORTA ADICIONADO =====
 
   // 1. Variáveis para guardar as leituras parciais
   int16_t parcial_esq = 0;
@@ -940,10 +971,13 @@ void loop() {
   if (tempoAtual - tempoPrintAnterior >= intervaloPrint) {
     tempoPrintAnterior = tempoAtual;  // Reinicia o timer de print
 
+    // Usa Serial.printf() para formatar a saída.
+    // %lld é o especificador para 'long long int' (que é o int64_t)
     // O '\n' no final significa "pular linha"
     Serial.printf("ESQ: %lld | DIR: %lld \n",
                   total_pulsos_esq,
                   total_pulsos_dir);
+    // ...existing code...
     ws.textAll("ESQ: " + String(total_pulsos_esq) + " | DIR: " + String(total_pulsos_dir) + " \n");
   }
   tempoAtual = millis();
@@ -956,4 +990,5 @@ void loop() {
 
 
 //TESTAR SE TEM COMO ENVIAR UMA ROTA ENQUANTO ELA ESTÁ EM EXECUÇÃO
+
 //tirou trens do ETA e da Velocidade

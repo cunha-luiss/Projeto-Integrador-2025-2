@@ -6,20 +6,25 @@ Sistema de controle e monitoramento de rotas para o carrinho autônomo Cegoinha,
 
 ```
 Projeto-Integrador-2025-2/
-├── websocket/
-│   └── cegoinha_websocket/
-│       ├── cegoinha_websocket.ino    ⭐ ARQUIVO PRINCIPAL
-│       ├── LITTLEFS_SYNC.md          (Documentação)
-│       └── TESTES.md                 (Documentação de testes)
-│   ├── websocket.ino                 (Versão antiga - não usar)
-│   └── README.md
-├── figma/                            (Protótipos e testes separados)
-└── README.md                         (Este arquivo)
+├── cegoinha_websocket/               ⭐ PASTA PRINCIPAL DO PROJETO
+│   ├── cegoinha_websocket.ino        📟 Código principal do ESP32
+│   ├── motores_andar.cpp             🚗 Controle dos motores de locomoção
+│   ├── motores_andar.h               📋 Declarações das funções dos motores
+│   ├── structures_projeto.h          🗂️ Estruturas de dados (Rota, Comando, etc)
+│   └── data/                         🌐 Interface Web (LittleFS)
+│       ├── index.html                🏠 Página principal
+│       ├── app.js                    ⚙️ Lógica JavaScript/WebSocket
+│       └── style.css                 🎨 Estilização
+├── websocket/                        ⚠️ Versões antigas (não usar)
+│   ├── cegoinha_websocket/           (Versão antiga - migrada)
+│   └── websocket.ino                 (Protótipo inicial)
+├── LICENSE                           📜 Licença GNU AGPL v3
+└── README.md                         📖 Este arquivo
 ```
 
-> ⚠️ **IMPORTANTE**: Os arquivos nas pastas `figma/` e `websocket/websocket.ino` são apenas **protótipos, testes e tentativas antigas**. 
+> ⚠️ **IMPORTANTE**: A pasta `websocket/` contém apenas **protótipos e versões antigas**. 
 > 
-> 🎯 **O ÚNICO arquivo que deve ser usado é**: `websocket/cegoinha_websocket/cegoinha_websocket.ino`
+> 🎯 **O ÚNICO diretório que deve ser usado é**: `cegoinha_websocket/`
 
 ---
 
@@ -33,30 +38,27 @@ Projeto-Integrador-2025-2/
 - Computador ou smartphone para acessar a interface web
 
 #### Software
-- **Arduino IDE** (versão 1.8.x ou 2.x)
+- **Arduino IDE** (versão 3.x)
 - **Bibliotecas Arduino** (instalação detalhada abaixo)
 
 ### 2. Instalação das Bibliotecas
 
-Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Manager** (`Sketch → Include Library → Manage Libraries...`):
+Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Manager** ou **Boards Manager**, no caso do primeiro (`Sketch → Include Library → Manage Libraries...`):
 
-1. **ESP32 Board Support**
-   - Em `File → Preferences`, adicione esta URL em "Additional Board Manager URLs":
-   ```
-   https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-   ```
-   - Vá em `Tools → Board → Boards Manager`, procure por "esp32" e instale
+1. **esp32** (by Espressif Systems)
+   - Versão: 3.3.x ou superior
+   - Instale via Boards Manager (procure por "esp32")
 
-2. **AsyncTCP** (by me-no-dev)
-   - Baixe manualmente de: https://github.com/me-no-dev/AsyncTCP
-   - Extraia e coloque na pasta `libraries` do Arduino
+2. **AsyncTCP** (by Esp32Async)
+   - Versão: 3.4.x ou superior
+   - Instale via Library Manager (procure por "AsyncTCP")
 
-3. **ESPAsyncWebServer** (by me-no-dev)
-   - Baixe manualmente de: https://github.com/me-no-dev/ESPAsyncWebServer
-   - Extraia e coloque na pasta `libraries` do Arduino
+3. **ESPAsyncWebServer** (by Esp32Async)
+   - Versão: 3.8.x ou superior
+   - Instale via Library Manager (procure por "ESPAsyncWebServer")
 
 4. **ArduinoJson** (by Benoit Blanchon)
-   - Versão: 6.x ou superior
+   - Versão: 7.4.x ou superior
    - Instale via Library Manager (procure por "ArduinoJson")
 
 5. **LittleFS** (ESP32)
@@ -76,7 +78,7 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
 
 1. **Abra o arquivo principal:**
    ```
-   Arquivo → Abrir → websocket/cegoinha_websocket/cegoinha_websocket.ino
+   Arquivo → Abrir → cegoinha_websocket/cegoinha_websocket.ino
    ```
 
 2. **Verifique a compilação:**
@@ -132,11 +134,6 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
    - Pressione `Ctrl + F5` para forçar atualização
 
 ### 2. Funcionalidades
-
-#### ✅ Status de Conexão
-- **🟢 Conectado** - WebSocket ativo e funcional
-- **🟡 Conectando...** - Tentando estabelecer conexão
-- **🔴 Desconectado** - Sem conexão com o ESP32
 
 #### 📍 Enviar Rota
 1. **Adicionar distância:**
@@ -198,18 +195,11 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
 - ✅ Reconexão automática de WebSocket
 - ✅ Visualização gráfica de trajetórias com SVG
 - ✅ Cálculo automático de estatísticas (tempo, consumo, distância)
-- ✅ Interface responsiva e moderna
 
 ### Limites do Sistema
 - **Máximo de rotas armazenadas:** Limitado pela memória flash (~1.5MB)
 - **Conexões simultâneas:** Limitado pela memória RAM do ESP32
 - **Tamanho do JSON:** Buffer de 4KB a 8KB por operação
-
----
-
-## 📚 Documentação Adicional
-
-- **LITTLEFS_SYNC.md** - Detalhes do sistema de persistência
 
 ---
 
@@ -224,38 +214,7 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
 
 ### Backup das rotas
 
-As rotas são armazenadas automaticamente no arquivo `/rotas.json` na flash do ESP32. Para fazer backup:
-
-1. Use ferramentas de acesso ao LittleFS (ESP32 Filesystem Uploader)
-2. Ou implemente uma função de exportação via interface web (futuro)
-
----
-
-## 👥 Suporte
-
-Para problemas, dúvidas ou sugestões:
-
-1. Verifique os logs do Monitor Serial
-2. Verifique o console do navegador (F12)
-3. Abra uma issue no repositório GitHub
-
----
-
-## 📝 Notas Importantes
-
-- **Não use os arquivos de teste:** Apenas `cegoinha_websocket.ino` é mantido e funcional
-- **Sempre faça Ctrl+F5:** Após qualquer upload, force atualização no navegador
-- **Mantenha o Monitor Serial aberto:** Útil para debug e monitoramento
-- **Bateria:** O sistema calcula consumo estimado baseado em 1.8km/h e 50Wh/m
-
----
-
-## 🎯 Roadmap Futuro
-
-- [ ] Controle em tempo real dos motores via interface
-- [ ] Exportação de rotas em JSON
-- [ ] Logs de execução detalhados
-- [ ] Integração com sensores (ultrassônico, giroscópio)
+As rotas são armazenadas automaticamente no arquivo `/rotas.json` na flash do ESP32. Para fazer backup, use ferramentas de acesso ao LittleFS (ESP32 Filesystem Uploader)
 
 ---
 
