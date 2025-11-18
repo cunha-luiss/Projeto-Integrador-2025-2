@@ -133,11 +133,6 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
 
 ### 2. Funcionalidades
 
-#### ✅ Status de Conexão
-- **🟢 Conectado** - WebSocket ativo e funcional
-- **🟡 Conectando...** - Tentando estabelecer conexão
-- **🔴 Desconectado** - Sem conexão com o ESP32
-
 #### 📍 Enviar Rota
 1. **Adicionar distância:**
    - Digite o valor em centímetros
@@ -198,7 +193,6 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
 - ✅ Reconexão automática de WebSocket
 - ✅ Visualização gráfica de trajetórias com SVG
 - ✅ Cálculo automático de estatísticas (tempo, consumo, distância)
-- ✅ Interface responsiva e moderna
 
 ### Limites do Sistema
 - **Máximo de rotas armazenadas:** Limitado pela memória flash (~1.5MB)
@@ -213,49 +207,12 @@ Abra o Arduino IDE e instale as seguintes bibliotecas através do **Library Mana
 
 ---
 
-## 🔄 Atualizações e Manutenção
-
-### Como atualizar o código
-
-1. Baixe a versão mais recente do repositório
-2. Abra o arquivo `cegoinha_websocket.ino` no Arduino IDE
-3. Faça o upload normalmente
-4. **IMPORTANTE:** Após o upload, acesse a interface e pressione `Ctrl + F5`
-
-### Backup das rotas
-
-As rotas são armazenadas automaticamente no arquivo `/rotas.json` na flash do ESP32. Para fazer backup:
-
-1. Use ferramentas de acesso ao LittleFS (ESP32 Filesystem Uploader)
-2. Ou implemente uma função de exportação via interface web (futuro)
-
----
-
-## 👥 Suporte
-
-Para problemas, dúvidas ou sugestões:
-
-1. Verifique os logs do Monitor Serial
-2. Verifique o console do navegador (F12)
-3. Abra uma issue no repositório GitHub
-
----
-
 ## 📝 Notas Importantes
 
 - **Não use os arquivos de teste:** Apenas `cegoinha_websocket.ino` é mantido e funcional
 - **Sempre faça Ctrl+F5:** Após qualquer upload, force atualização no navegador
 - **Mantenha o Monitor Serial aberto:** Útil para debug e monitoramento
 - **Bateria:** O sistema calcula consumo estimado baseado em 1.8km/h e 50Wh/m
-
----
-
-## 🎯 Roadmap Futuro
-
-- [ ] Controle em tempo real dos motores via interface
-- [ ] Exportação de rotas em JSON
-- [ ] Logs de execução detalhados
-- [ ] Integração com sensores (ultrassônico, giroscópio)
 
 ---
 
