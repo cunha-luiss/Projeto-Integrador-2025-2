@@ -2,21 +2,24 @@
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <PID_v1_bc.h>
 #include "motores_andar.h" // Inclui as declarações do .h
 #include "structures_projeto.h"
 #include "driver/pcnt.h"
 
-// Define os pinos para o Motor esquerdo
-#define FRENTE_ESQ 14
-#define TRAS_ESQ 27
+// Define os pinos para o Motor esquerdo (A)
+#define FRENTE_ESQ 22
+#define TRAS_ESQ 23
 #define ENC_A_ESQ 34
 #define ENC_B_ESQ 35
 
-// Define os pinos para o Motor direito
+// Define os pinos para o Motor direito (B)
 #define FRENTE_DIR 26
 #define TRAS_DIR 25
 #define ENC_A_DIR 33
 #define ENC_B_DIR 32
+
+#define VELOCIDADE 100
 
 static AsyncWebSocket *ws = nullptr;
 static int *PASSO_ROTA = 0;
@@ -25,14 +28,30 @@ static int64_t *META_PULSOS = nullptr;
 static Rota *ROTA_ATUAL = nullptr;
 static volatile int64_t *total_pulsos_esq = nullptr;
 static volatile int64_t *total_pulsos_dir = nullptr;
+static const int *sampleTime = nullptr;
 
-void motoresSetup(AsyncWebSocket *pws, int *pPASSO_ROTA, String *pmovimento, int64_t *pMETA_PULSOS, Rota *pROTA_ATUAL, volatile int64_t *ptotal_pulsos_esq, volatile int64_t *ptotal_pulsos_dir){
-  // andar
-  pinMode(FRENTE_ESQ, OUTPUT);
-  pinMode(TRAS_ESQ, OUTPUT);
-  pinMode(FRENTE_DIR, OUTPUT);
-  pinMode(TRAS_DIR, OUTPUT);
+// Configurações do PWM 
+const int freq = 30000;
+const int pwmChannelA = 0;
+const int pwmChannelB = 1;
+const int resolution = 8; // 0 a 255
+const int PPR = 1050;  // 7 pulsos * redução 150
 
+// Variáveis do PID
+double Setpoint_A, Input_A, Output_A;
+double Setpoint_B, Input_B, Output_B;
+volatile long contadorA = 0;
+volatile long contadorB = 0;
+
+// Ajustes do PID (Kp, Ki, Kd) -> VOCÊ PRECISARÁ AJUSTAR ISSO DEPOIS
+double Kp = 1, Ki = 2 , Kd = 0.1;
+
+// Criando os objetos PID
+PID pidMotorA(&Input_A, &Output_A, &Setpoint_A, Kp, Ki, Kd, DIRECT);
+PID pidMotorB(&Input_B, &Output_B, &Setpoint_B, Kp, Ki, Kd, DIRECT);
+
+void motoresSetup(AsyncWebSocket *pws, int *pPASSO_ROTA, String *pmovimento, int64_t *pMETA_PULSOS, Rota *pROTA_ATUAL, volatile int64_t *ptotal_pulsos_esq, volatile int64_t *ptotal_pulsos_dir, const int *psampleTimePID){
+  
   ws = pws;
   PASSO_ROTA = pPASSO_ROTA;
   movimento = pmovimento;
@@ -40,20 +59,77 @@ void motoresSetup(AsyncWebSocket *pws, int *pPASSO_ROTA, String *pmovimento, int
   ROTA_ATUAL = pROTA_ATUAL;
   total_pulsos_esq = ptotal_pulsos_esq;
   total_pulsos_dir = ptotal_pulsos_dir;
+  sampleTime = psampleTimePID;
+  
+  // andar
+  pinMode(FRENTE_ESQ, OUTPUT);
+  pinMode(TRAS_ESQ, OUTPUT);
+  pinMode(FRENTE_DIR, OUTPUT);
+  pinMode(TRAS_DIR, OUTPUT);
+
+  pinMode(ENC_A_ESQ, INPUT); // Lembrete: Pino 34 não tem Pullup interno
+  pinMode(ENC_B_DIR, INPUT_PULLUP); // Pino 32 tem Pullup
+
+  // Ativa as interrupções para contar os pulsos automaticamente
+  attachInterrupt(digitalPinToInterrupt(ENC_A_ESQ), readEncoderA, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENC_B_DIR), readEncoderB, RISING);
+
+  ledcSetup(pwmChannelA, freq, resolution);
+  ledcSetup(pwmChannelB, freq, resolution);
+
+  // Associa o PWM aos pinos que controlam a velocidade (IN1 e IN3 assumindo frente)
+  // Nota: Em pontes H simples, aplicamos PWM no pino HIGH e 0 no LOW.
+  ledcAttachPin(FRENTE_ESQ, pwmChannelA); 
+  ledcAttachPin(FRENTE_DIR, pwmChannelB);
+
+   // Inicializa PIDs
+  Setpoint_A = 28; // [rpm] Setpoint máximo de 145.71 rpm(se manter esse valor por muito tempo vai queimar)
+  Setpoint_B = 28;
+  
+  pidMotorA.SetMode(AUTOMATIC);
+  pidMotorB.SetMode(AUTOMATIC);
+  
+  // Limites do PWM (0 a 255)
+  pidMotorA.SetOutputLimits(0, 255); //transforma em voltas por segundo
+  pidMotorB.SetOutputLimits(0, 255);
+  
+  // Tempo de amostragem do PID
+  pidMotorA.SetSampleTime(*sampleTime);
+  pidMotorB.SetSampleTime(*sampleTime);
 }
 
+// ===== Funções Auxiliares PWM =====
+void IRAM_ATTR readEncoderA() {
+  // Simples incremento. Para saber direção, precisaria ler o canal B também.
+  contadorA++; 
+}
+void IRAM_ATTR readEncoderB() {
+  contadorB++;
+}
+void moverMotorA(int pwmVal) {
+  // Sentido Horário
+  ledcWrite(pwmChannelA, pwmVal); // Aplica PWM no IN1
+  digitalWrite(TRAS_ESQ, LOW);         // IN2 fica em 0
+}
+
+void moverMotorB(int pwmVal) {
+  // Sentido Horário
+  ledcWrite(pwmChannelB, pwmVal); // Aplica PWM no IN3
+  digitalWrite(TRAS_DIR, LOW);         // IN4 fica em 0
+}
 
 // funcoes de andar
 void moverMotorEsq(int direcao) {
   if (direcao == 1) {
-    digitalWrite(FRENTE_ESQ, HIGH);
-    digitalWrite(TRAS_ESQ, LOW);
-  } else if (direcao == -1) {
-    digitalWrite(FRENTE_ESQ, LOW);
-    digitalWrite(TRAS_ESQ, HIGH);
+    moverMotorA(Output_A);
+
+  } else if (direcao == 2) { //curva
+    analogWrite(FRENTE_ESQ, VELOCIDADE);
+    analogWrite(TRAS_ESQ, LOW);
   } else {
-    digitalWrite(FRENTE_ESQ, LOW);
-    digitalWrite(TRAS_ESQ, LOW);
+    ledcWrite(pwmChannelA, 0);      // Zera o PWM do IN1
+    analogWrite(FRENTE_ESQ, LOW);  // IN1 em LOW
+    analogWrite(TRAS_ESQ, LOW);  
   }
 }
 
@@ -63,14 +139,14 @@ void moverMotorEsq(int direcao) {
  */
 void moverMotorDir(int direcao) {
   if (direcao == 1) {
-    digitalWrite(FRENTE_DIR, HIGH);
-    digitalWrite(TRAS_DIR, LOW);
-  } else if (direcao == -1) {
-    digitalWrite(FRENTE_DIR, LOW);
-    digitalWrite(TRAS_DIR, HIGH);
+    moverMotorB(Output_B);
+  } else if (direcao == 2) { //curva
+    analogWrite(FRENTE_DIR, VELOCIDADE);
+    analogWrite(TRAS_DIR, LOW);
   } else {
-    digitalWrite(FRENTE_DIR, LOW);
-    digitalWrite(TRAS_DIR, LOW);
+    ledcWrite(pwmChannelB, 0);      // Zera o PWM do IN3
+    analogWrite(FRENTE_DIR, LOW);  // IN3 em LOW
+    analogWrite(TRAS_DIR, LOW);  
   }
 }
 
@@ -91,8 +167,8 @@ void executarRota(Rota &novaRota) {
       *movimento = "ROTATE_D";
       *total_pulsos_esq = 0;
       *total_pulsos_dir = 0;
-      moverMotorEsq(1);
-      *META_PULSOS = 500;
+      moverMotorEsq(2);
+      *META_PULSOS = 100;
       ws->textAll("VIRAR A DIREITA \n\n\n\n\n");
     }
 
@@ -100,8 +176,8 @@ void executarRota(Rota &novaRota) {
       *movimento = "ROTATE_E";
       *total_pulsos_esq = 0;
       *total_pulsos_dir = 0;
-      moverMotorDir(1);
-      *META_PULSOS = 500;  // VV VER QUANTIDADE BOA AQUI
+      moverMotorDir(2);
+      *META_PULSOS = 100;  // VV VER QUANTIDADE BOA AQUI
       ws->textAll("VIRAR A ESQUERDA \n\n\n\n\n");
     }
   } else if (cmd.tipo == "MOVE") {
@@ -167,4 +243,40 @@ void configuraEncoderDireitoPCNT() {
   pcnt_counter_pause(PCNT_UNIT_1);
   pcnt_counter_clear(PCNT_UNIT_1);
   pcnt_counter_resume(PCNT_UNIT_1);
+}
+
+void calcularPID()
+{
+  Input_A = (contadorA * 600.0) / PPR; 
+  Input_B = (contadorB * 600.0) / PPR;
+
+  // Reseta os contadores para o próximo ciclo
+  contadorA = 0;
+  contadorB = 0;
+  
+  // 2. Calcular o PID
+  pidMotorA.Compute();
+  pidMotorB.Compute();
+
+  // 3. Debug no Serial Plotter (Muito útil!)
+  // Mostra: Meta vs Realidade
+  Serial.print("Setpoint_A:");        Serial.print(Setpoint_A);
+  Serial.print("  ,A_Vel:");        Serial.print(Input_A);        Serial.print(" rpm");
+  Serial.print("  ,A_PWM:");        Serial.print(Output_A);
+
+  Serial.print("    |    ");
+
+  Serial.print("Setpoint_B:");        Serial.print(Setpoint_B);
+  Serial.print("  ,B_Vel:");        Serial.print(Input_B);        Serial.print(" rpm");
+  Serial.print("  ,B_PWM:");        Serial.println(Output_B);
+
+  // 4. Aplicar o PWM nos motores
+  if (*META_PULSOS != 0 && *META_PULSOS != -1) {
+    moverMotorA(Output_A);
+    moverMotorB(Output_B);
+  }
+  else {
+    pararMotores();
+  }
+
 }

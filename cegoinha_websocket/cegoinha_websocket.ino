@@ -44,7 +44,9 @@ volatile bool meta_dir_atingida = false;
 
 int64_t META_PULSOS = 0;
 
-
+// Tempo de amostragem PID 
+unsigned long lastTime = 0;
+const int sampleTimePID = 100; // Calcular a cada 100ms
 
 std::vector<Rota> rotasArmazenadas;
 int PASSO_ROTA = -1;
@@ -81,29 +83,6 @@ float distanciaPercorrida = 0.0;  // Distância acumulada percorrida desde o in�
 unsigned long ultimoTempoCalculoETA = 0;
 const unsigned long intervaloCalculoETA = 500;  // Calcular ETA a cada 500ms
 float etaSegundos = 0.0;                        // ETA em segundos
-
-/* ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
-
-// --- Pinos do Motor da Porta (L298N) ---
-// Mude estes pinos conforme a sua ligação real
-#define PIN_FRENTE_ESQ 36
-#define PIN_TRAS_ESQ 37
-// Pino ENA deve estar conectado direto ao 5V ou 12V para velocidade máxima
-
-// --- Configuração de Tempo da Porta ---
-#define TEMPO_ABERTURA_MS 3000    // Tempo para abrir completamente (3 segundos)
-#define TEMPO_FECHAMENTO_MS 3000  // Tempo para fechar completamente (3 segundos)
-
-// --- Controle de Estado da Porta (Lógica Não-Bloqueante) ---
-#define ESTADO_PORTA_PARADO 0
-#define ESTADO_PORTA_ABRINDO 1
-#define ESTADO_PORTA_FECHANDO 2
-#define ESTADO_PORTA_SEGURANDO 3  // Novo estado: segurar posição
-
-int estadoPorta = ESTADO_PORTA_PARADO;   // Estado atual da porta
-unsigned long tempoInicioMovimento = 0;  // Marca quando o movimento começou
-
-*/
 
 
 // Mapa de dispositivos conectados
@@ -224,33 +203,6 @@ void enviarRotasParaCliente(AsyncWebSocketClient *client) {
   Serial.printf("📤 Rotas sincronizadas para cliente #%u\n", client->id());
 }
 
-/* ===== INÍCIO: CÓDIGO DA PORTA ADICIONADO =====
-// --- Funções de Baixo Nível do Motor da Porta ---
-
-// Para o motor completamente (desliga)
-void pararPorta() {
-  digitalWrite(PIN_FRENTE_ESQ, LOW);
-  digitalWrite(PIN_TRAS_ESQ, LOW);
-}
-
-// Gira em um sentido (Ex: Abrir)
-void abrirPortaLogica() {
-  digitalWrite(PIN_FRENTE_ESQ, HIGH);
-  digitalWrite(PIN_TRAS_ESQ, LOW);
-}
-
-// Gira no outro sentido (Ex: Fechar)
-void fecharPortaLogica() {
-  digitalWrite(PIN_FRENTE_ESQ, LOW);
-  digitalWrite(PIN_TRAS_ESQ, HIGH);
-}
-
-// Segura a posição (freio do motor - ambos HIGH)
-void segurarPosicaoPorta() {
-  digitalWrite(PIN_FRENTE_ESQ, HIGH);
-  digitalWrite(PIN_TRAS_ESQ, HIGH);
-}
-*/
 
 /**
  * Lê a tensão da bateria através do ADC com divisor de tensão
@@ -336,13 +288,13 @@ void verificarBateriaCritica() {
     
     // Para o carrinho se estiver em movimento
     if (PASSO_ROTA >= 0) {
-      pararMotores();
-      PASSO_ROTA = -1;
-      META_PULSOS = 0;
-      ROTA_ATUAL = Rota();
-      
+      //pararMotores();
+      //PASSO_ROTA = -1;
+      //META_PULSOS = 0;
+      //ROTA_ATUAL = Rota();
+      //vv tirar aviso da bateria
       // Notifica clientes
-      ws.textAll("{\"channel\":\"BATTERY_CRITICAL\",\"status\":\"stopped\",\"message\":\"Bateria crítica! Carrinho parado.\"}");
+      //ws.textAll("{\"channel\":\"BATTERY_CRITICAL\",\"status\":\"stopped\",\"message\":\"Bateria crítica! Carrinho parado.\"}");
     }
   } else if (batterySOC <= 20.0) {
     // Apenas aviso
@@ -582,23 +534,6 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       Serial.println("=========================\n");
     }
 
-
-    // Processar comando para ABRIR A PORTA
-    else if (strcmp(channel, "ABRIR") == 0) {
-      Serial.println("Comando: ABRIR. Iniciando abertura...");
-      estadoPorta = ESTADO_PORTA_ABRINDO;  // Muda o estado
-      tempoInicioMovimento = millis();     // Marca o tempo de início
-      client->text("{\"status\":\"ok\",\"message\":\"Comando 'ABRIR' recebido. Abrindo...\"}");
-    }
-
-    // Processar comando para FECHAR A PORTA
-    else if (strcmp(channel, "FECHAR") == 0) {
-      Serial.println("Comando: FECHAR. Iniciando fechamento...");
-      estadoPorta = ESTADO_PORTA_FECHANDO;  // Muda o estado
-      tempoInicioMovimento = millis();      // Marca o tempo de início
-      client->text("{\"status\":\"ok\",\"message\":\"Comando 'FECHAR' recebido. Fechando...\"}");
-    }
-
     // Processar comando para PARAR O CARRINHO
     else if (strcmp(channel, "PARAR_CARRINHO") == 0)
     {
@@ -679,21 +614,6 @@ void setup() {
   }
   Serial.println("------------------------------\n");
 
-  Serial.println("✅ Encoder configurado nos pinos IO34 e IO35");
-  Serial.println("✅ Interrupção anexada ao canal A");
-  Serial.println("------------------------------\n");
-
-
-  Serial.println("--- Setup do Motor da Porta ---");
-  // --- Setup do Motor ---
-  pinMode(PIN_FRENTE_ESQ, OUTPUT);
-  pinMode(PIN_TRAS_ESQ, OUTPUT);
-
-  // Garante que o motor comece parado
-  pararPorta();
-  Serial.println("✅ Driver L298N (Porta) configurado.");
-  Serial.println("------------------------------\n");
-
   // Inicializar vetores
   rotasArmazenadas.clear();
   dispositivosConectados.clear();
@@ -733,7 +653,7 @@ void setup() {
 
 
   //andar
-  motoresSetup(&ws, &PASSO_ROTA, &movimento, &META_PULSOS, &ROTA_ATUAL, &total_pulsos_esq, &total_pulsos_dir);
+  motoresSetup(&ws, &PASSO_ROTA, &movimento, &META_PULSOS, &ROTA_ATUAL, &total_pulsos_esq, &total_pulsos_dir, &sampleTimePID);
 
   Serial.println("\n--- Configurando Monitoramento de Bateria ---");
   
@@ -771,62 +691,6 @@ void loop() {
     verificarBateriaCritica();
   }
   
-
-  // --- MÁQUINA DE ESTADOS DO MOTOR DA PORTA ---
-  // Esta parte roda continuamente, verificando o estado da porta
-  // sem usar 'delay()' ou 'while()', permitindo que o WebSocket
-  // e o servidor web continuem funcionando.
-
-  switch (estadoPorta) {
-
-    case ESTADO_PORTA_ABRINDO:
-      {
-        unsigned long tempoDecorrido = millis() - tempoInicioMovimento;
-
-        // Verifica se o tempo de abertura foi atingido
-        if (tempoDecorrido >= TEMPO_ABERTURA_MS) {
-          Serial.println("Tempo de abertura atingido. Segurando posição.");
-          segurarPosicaoPorta();  // Segura a posição
-          estadoPorta = ESTADO_PORTA_SEGURANDO;
-          ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"ABERTA\"}");
-        }
-        // Caso contrário, continua abrindo
-        else {
-          abrirPortaLogica();
-        }
-      }
-      break;
-
-    case ESTADO_PORTA_FECHANDO:
-      {
-        unsigned long tempoDecorrido = millis() - tempoInicioMovimento;
-
-        // Verifica se o tempo de fechamento foi atingido
-        if (tempoDecorrido >= TEMPO_FECHAMENTO_MS) {
-          Serial.println("Tempo de fechamento atingido. Segurando posição.");
-          segurarPosicaoPorta();  // Segura a posição
-          estadoPorta = ESTADO_PORTA_SEGURANDO;
-          ws.textAll("{\"channel\":\"STATUS_PORTA\",\"status\":\"FECHADA\"}");
-        }
-        // Caso contrário, continua fechando
-        else {
-          fecharPortaLogica();
-        }
-      }
-      break;
-
-    case ESTADO_PORTA_SEGURANDO:
-      // Mantém a posição ativa (freio do motor)
-      // O motor fica energizado segurando a porta na posição
-      segurarPosicaoPorta();
-      break;
-
-    case ESTADO_PORTA_PARADO:
-      // Motor completamente desligado
-      pararPorta();
-      break;
-  }
-
   // 1. Variáveis para guardar as leituras parciais
   int16_t parcial_esq = 0;
   int16_t parcial_dir = 0;
@@ -858,6 +722,12 @@ void loop() {
   // --- Lógica de Parada (individual) ---
   if (META_PULSOS != 0) {
     if (movimento == "MOVE") {
+      if (millis() - lastTime >= sampleTimePID) {
+    
+      calcularPID();
+      lastTime = millis();
+
+    }
       if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida)) {
         meta_esq_atingida = true;
         moverMotorEsq(0);
@@ -875,6 +745,7 @@ void loop() {
       // --- Verificação Final ---
       if (meta_esq_atingida && meta_dir_atingida) {
         // prepara para próxima rota
+        pararMotores();
         META_PULSOS = 0;
         meta_dir_atingida = false;
         meta_esq_atingida = false;
@@ -892,12 +763,13 @@ void loop() {
     else if (movimento == "ROTATE_D") {
       if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida)) {
         meta_esq_atingida = true;
-        moverMotorEsq(0);
+        moverMotorEsq(2);
         Serial.println(">>> META ESQUERDA ATINGIDA! <<<");
         ws.textAll(">>> META ESQUERDA ATINGIDA! <<<");
       }
       if (meta_esq_atingida) {
         // prepara para próxima rota
+        pararMotores();
         META_PULSOS = 0;
         meta_dir_atingida = false;
         meta_esq_atingida = false;
@@ -915,12 +787,13 @@ void loop() {
     else if (movimento == "ROTATE_E") {
       if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida)) {
         meta_dir_atingida = true;
-        moverMotorDir(0);
+        moverMotorDir(2);
         Serial.println(">>> META DIREITA ATINGIDA! <<<");
         ws.textAll(">>> META DIREITA ATINGIDA! <<<");
       }
       if (meta_dir_atingida) {
         // prepara para próxima rota
+        pararMotores();
         META_PULSOS = 0;
         meta_dir_atingida = false;
         meta_esq_atingida = false;
@@ -934,6 +807,7 @@ void loop() {
         tempoTerminoComandoAnterior = millis();
       }
     }
+
   }
   // --- Bloco de Impressão (Debug) ---
   unsigned long tempoAtual = millis();
@@ -953,7 +827,3 @@ void loop() {
     proximoComando(ROTA_ATUAL);
   }
 }
-
-
-//TESTAR SE TEM COMO ENVIAR UMA ROTA ENQUANTO ELA ESTÁ EM EXECUÇÃO
-//tirou trens do ETA e da Velocidade
