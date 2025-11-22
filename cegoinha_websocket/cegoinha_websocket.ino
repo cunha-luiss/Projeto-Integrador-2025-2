@@ -62,20 +62,8 @@ volatile bool aguardandoProximoComando = false;
 unsigned long tempoPrintAnterior = 0;
 const unsigned long intervaloPrint = 1500;  // Imprime a cada 1s
 
-
-
-// --- Parâmetros do Motor e Encoder ---
-#define PULSOS_POR_REVOLUCAO 20.0  // Número de pulsos por revolução do encoder (ajuste conforme seu motor)
-#define DIAMETRO_RODA 6.5          // Diâmetro da roda em cm (ajuste conforme seu carrinho)
-#define PI 3.14159265359
-
 // --- Variáveis de Contagem do Encoder ---
 volatile long contadorPulsos = 0;  // Contador de pulsos do encoder
-
-// --- Variáveis para Cálculo de Velocidade ---
-unsigned long ultimoTempoCalculo = 0;
-const unsigned long intervaloCalculo = 100;  // Calcular velocidade a cada 100ms
-float velocidadeAtual = 0.0;                 // Velocidade em cm/s
 
 // --- Variáveis para Cálculo de ETA ---
 float distanciaDestino = 0.0;     // Distância total até o destino em cm
@@ -83,7 +71,6 @@ float distanciaPercorrida = 0.0;  // Distância acumulada percorrida desde o in�
 unsigned long ultimoTempoCalculoETA = 0;
 const unsigned long intervaloCalculoETA = 500;  // Calcular ETA a cada 500ms
 float etaSegundos = 0.0;                        // ETA em segundos
-
 
 // Mapa de dispositivos conectados
 std::vector<DispositivoConectado> dispositivosConectados;

@@ -21,6 +21,8 @@
 
 #define VELOCIDADE 100
 
+#define CIRCUNFERENCIA_RDOA (6.5 * PI)
+
 static AsyncWebSocket *ws = nullptr;
 static int *PASSO_ROTA = 0;
 static String *movimento = nullptr;
@@ -247,6 +249,7 @@ void configuraEncoderDireitoPCNT() {
 
 void calcularPID()
 {
+  //Motores em RPM
   Input_A = (contadorA * 600.0) / PPR; 
   Input_B = (contadorB * 600.0) / PPR;
 
@@ -279,4 +282,13 @@ void calcularPID()
     pararMotores();
   }
 
+}
+
+float calcularVelocidadeInstantanea() {
+  float velocidade_media_rpm = (Input_A + Input_B) / 2.0;
+  
+  //converte RPM para cm/s
+  float velocidade_cm_s = (velocidade_media_rpm / 60.0) * CIRCUNFERENCIA_RDOA;
+  
+  return velocidade_cm_s;
 }
