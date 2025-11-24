@@ -444,6 +444,13 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       definirDistanciaDestino(distanciaTotal);
       Serial.printf("📏 Distância total da rota: %.2f cm\n", distanciaTotal);
 
+      // Verificar se já atingiu o limite de rotas
+      if (rotasArmazenadas.size() >= 5) {
+        Serial.printf("⚠️ Limite de %d rotas atingido. Removendo rota mais antiga (ID: %lu)\n", 
+                      5, rotasArmazenadas[0].id);
+        rotasArmazenadas.erase(rotasArmazenadas.begin()); // Remove a primeira (mais antiga)
+      }
+
       // Adicionar rota ao armazenamento
       rotasArmazenadas.push_back(novaRota);
       Serial.printf("Rota armazenada! Total de rotas: %d\n", rotasArmazenadas.size());
