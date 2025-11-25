@@ -22,4 +22,5 @@ void IRAM_ATTR readEncoderB();
 void moverMotorB(int pwmVal);
 void moverMotorA(int pwmVal);
 float calcularVelocidadeInstantanea();
+void resetPID();
 #endif
