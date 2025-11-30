@@ -618,10 +618,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Oculta o botão de parar
                 ocultarBotaoParar();
             }
-            else if ((data.status === 'ok' || data.status === 'info') && data.message && data.message.includes('Porta')) {
-                console.log('Info da porta:', data.message);
-                if (statusPortaInfo) {
-                    statusPortaInfo.textContent = data.message;
+            else if (data.channel === 'VELOCIDADE'){                
+                const velocidadeElements = document.querySelectorAll('.status-percurso-card .status-value');
+                if (velocidadeElements.length > 0) {
+                    // Primeiro card é a velocidade
+                    velocidadeElements[0].textContent = `${data.value} cm/s`;
                 }
             }
         } catch (e) {

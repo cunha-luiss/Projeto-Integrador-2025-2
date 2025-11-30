@@ -558,7 +558,7 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
       client->text("{\"status\":\"ok\",\"message\":\"Comando 'PARAR_CARRINHO' executado\"}");
     }
 
-    // Processar comando para DEFINIR DISTÂNCIA DESTINO
+    // Processar comando para DEFINIR DISTÂNCIA DESTINO  vv implementar isso aqui
     else if (strcmp(channel, "DEFINIR_DISTANCIA") == 0) {
       if (doc.containsKey("value")) {
         float distancia = doc["value"];
@@ -569,7 +569,6 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
         client->text("{\"status\":\"error\",\"message\":\"Valor não encontrado\"}");
       }
     }
-
     // Comando genérico
     else {
       float value = doc["value"];

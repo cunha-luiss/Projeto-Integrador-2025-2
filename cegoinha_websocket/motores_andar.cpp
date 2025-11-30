@@ -32,6 +32,8 @@ static volatile int64_t *total_pulsos_esq = nullptr;
 static volatile int64_t *total_pulsos_dir = nullptr;
 static const int *sampleTime = nullptr;
 
+volatile float velocidadeInstantanea = 0;
+
 // Configurações do PWM
 const int freq = 30000;
 const int pwmChannelA = 0;
@@ -391,16 +393,29 @@ void calcularPID()
   // 4. Aplicar o PWM nos motores
   moverMotorA(Output_A);
   moverMotorB(Output_B);
+  calcularVelocidadeInstantanea();
 }
 
 float calcularVelocidadeInstantanea()
-{
+{  
+  if (Input_A == 0 && Input_B == 0) {
+    velocidadeInstantanea = 0.0;
+  }
+  else {
+  // Média das velocidades já calculadas em RPM
   float velocidade_media_rpm = (Input_A + Input_B) / 2.0;
 
-  // converte RPM para cm/s
+  // Converte RPM para cm/s
   float velocidade_cm_s = (velocidade_media_rpm / 60.0) * CIRCUNFERENCIA_RDOA;
 
-  return velocidade_cm_s;
+  velocidadeInstantanea = velocidade_cm_s;
+  }
+  String json = "{\"channel\":\"VELOCIDADE\",\"value\":" + String(velocidadeInstantanea, 1) + "}";
+  
+  // Enviar para todos os clientes conectados
+  ws->textAll(json);
+  
+  return velocidadeInstantanea;
 }
 
 // professor sugeriu alterar o setpoint para 0 antes de fazer a curva para que ele não some erro
