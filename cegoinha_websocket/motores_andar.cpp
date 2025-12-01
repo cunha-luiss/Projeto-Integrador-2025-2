@@ -127,11 +127,11 @@ void moverMotorEsq(int direcao) {
 
   } else if (direcao == 2) { //curva
     analogWrite(FRENTE_ESQ, VELOCIDADE);
-    analogWrite(TRAS_ESQ, LOW);
+    digitalWrite(TRAS_ESQ, LOW);
   } else {
     ledcWrite(pwmChannelA, 0);      // Zera o PWM do IN1
-    analogWrite(FRENTE_ESQ, LOW);  // IN1 em LOW
-    analogWrite(TRAS_ESQ, LOW);  
+    digitalWrite(FRENTE_ESQ, LOW);  // IN1 em LOW
+    digitalWrite(TRAS_ESQ, LOW);  
   }
 }
 
@@ -144,11 +144,11 @@ void moverMotorDir(int direcao) {
     moverMotorB(Output_B);
   } else if (direcao == 2) { //curva
     analogWrite(FRENTE_DIR, VELOCIDADE);
-    analogWrite(TRAS_DIR, LOW);
+    digitalWrite(TRAS_DIR, LOW);
   } else {
     ledcWrite(pwmChannelB, 0);      // Zera o PWM do IN3
-    analogWrite(FRENTE_DIR, LOW);  // IN3 em LOW
-    analogWrite(TRAS_DIR, LOW);  
+    digitalWrite(FRENTE_DIR, LOW);  // IN3 em LOW
+    digitalWrite(TRAS_DIR, LOW);  
   }
 }
 
@@ -184,7 +184,7 @@ void executarRota(Rota &novaRota) {
     }
   } else if (cmd.tipo == "MOVE") {
     *movimento = "MOVE";
-    *META_PULSOS = cmd.valor * 1000;
+    *META_PULSOS = (int64_t)ceil(cmd.valor * 2.91);
     *total_pulsos_esq = 0;
     *total_pulsos_dir = 0;
 
