@@ -1,4 +1,4 @@
-#ifndef MOTORES_ANDAR_H  // Isso é um "Include Guard"
+#ifndef MOTORES_ANDAR_H // Isso é um "Include Guard"
 #define MOTORES_ANDAR_H
 
 #include <WiFi.h>
@@ -19,7 +19,7 @@ void configuraEncoderEsquerdoPCNT();
 void calcularPID();
 void IRAM_ATTR readEncoderA();
 void IRAM_ATTR readEncoderB();
-void moverMotorB(int pwmVal);
-void moverMotorA(int pwmVal);
+void aplicarControleMotorA(int pwmVal, int direcao);
+void aplicarControleMotorB(int pwmVal, int direcao);
 float calcularVelocidadeInstantanea();
 #endif

@@ -725,14 +725,12 @@ void loop() {
     }
       if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida)) {
         meta_esq_atingida = true;
-        moverMotorEsq(0);
         Serial.println(">>> META ESQUERDA ATINGIDA! <<<");
         ws.textAll(">>> META ESQUERDA ATINGIDA! <<<");
       }
 
       if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida)) {
         meta_dir_atingida = true;
-        moverMotorDir(0);
         Serial.println(">>> META DIREITA ATINGIDA! <<<");
         ws.textAll(">>> META DIREITA ATINGIDA! <<<");
       }
@@ -758,7 +756,7 @@ void loop() {
     else if (movimento == "ROTATE_D") {
       if ((total_pulsos_esq >= META_PULSOS) && (!meta_esq_atingida)) {
         meta_esq_atingida = true;
-        moverMotorEsq(2);
+        moverMotorEsq(0);
         Serial.println(">>> META ESQUERDA ATINGIDA! <<<");
         ws.textAll(">>> META ESQUERDA ATINGIDA! <<<");
       }
@@ -782,7 +780,7 @@ void loop() {
     else if (movimento == "ROTATE_E") {
       if ((total_pulsos_dir >= META_PULSOS) && (!meta_dir_atingida)) {
         meta_dir_atingida = true;
-        moverMotorDir(2);
+        moverMotorDir(0);
         Serial.println(">>> META DIREITA ATINGIDA! <<<");
         ws.textAll(">>> META DIREITA ATINGIDA! <<<");
       }
