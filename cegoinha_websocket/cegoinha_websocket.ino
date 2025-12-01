@@ -7,6 +7,7 @@
 #include "structures_projeto.h"
 #include "driver/pcnt.h"
 #include "motores_andar.h"
+#include "sonico.h"
 
 
 const char *ssid = "cegoinha";
