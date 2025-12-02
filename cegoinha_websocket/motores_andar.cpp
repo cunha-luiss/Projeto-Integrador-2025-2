@@ -184,16 +184,9 @@ void moverMotorEsq(int direcao)
   }
   else if (direcao == 2)
   {                      // curva para direita - motor esquerdo anda, direito para
-    direcao_motor_A = 1; // Define direção como frente
+    direcao_motor_A = 1; // Motor esquerdo vai para frente
     pidMotorA.SetMode(AUTOMATIC);
     Setpoint_A = 28;
-
-    // Para o motor direito com freio
-    Setpoint_B = 0;
-    direcao_motor_B = 0;
-    pidMotorB.SetMode(MANUAL);
-    Output_B = 0;
-    aplicarControleMotorB(0, 0); // Aplica freio imediatamente no motor direito
   }
   else
   {
@@ -227,16 +220,9 @@ void moverMotorDir(int direcao)
   }
   else if (direcao == 2)
   {                      // curva para esquerda - motor direito anda, esquerdo para
-    direcao_motor_B = 1; // Define direção como frente
+    direcao_motor_B = 1; // Motor direito vai para frente
     pidMotorB.SetMode(AUTOMATIC);
     Setpoint_B = 28;
-
-    // Para o motor esquerdo com freio
-    Setpoint_A = 0;
-    direcao_motor_A = 0;
-    pidMotorA.SetMode(MANUAL);
-    Output_A = 0;
-    aplicarControleMotorA(0, 0); // Aplica freio imediatamente no motor esquerdo
   }
   else
   {
@@ -280,8 +266,13 @@ void executarRota(Rota &novaRota)
       *movimento = "ROTATE_D";
       *total_pulsos_esq = 0;
       *total_pulsos_dir = 0;
+      *META_PULSOS = 100; // Define META_PULSOS ANTES de mover
+
+      // Motor direito para com freio
+      moverMotorDir(0);
+      // Motor esquerdo anda
       moverMotorEsq(2);
-      *META_PULSOS = 100;
+
       ws->textAll("VIRAR A DIREITA \n\n\n\n\n");
     }
 
@@ -290,8 +281,13 @@ void executarRota(Rota &novaRota)
       *movimento = "ROTATE_E";
       *total_pulsos_esq = 0;
       *total_pulsos_dir = 0;
+      *META_PULSOS = 100; // Define META_PULSOS ANTES de mover
+
+      // Motor esquerdo para com freio
+      moverMotorEsq(0);
+      // Motor direito anda
       moverMotorDir(2);
-      *META_PULSOS = 100; // VV VER QUANTIDADE BOA AQUI
+
       ws->textAll("VIRAR A ESQUERDA \n\n\n\n\n");
     }
   }
