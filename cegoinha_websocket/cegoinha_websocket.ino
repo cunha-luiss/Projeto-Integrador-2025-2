@@ -453,7 +453,7 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
     // Processar envio de rotas
     if (strcmp(channel, "ABRIR") == 0)
     {
-      servo.write(40);
+      servo.write(20);
       ws.textAll("recebi abrir");
     }
     else if (strcmp(channel, "FECHAR") == 0)
