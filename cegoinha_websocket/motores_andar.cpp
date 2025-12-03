@@ -38,14 +38,17 @@ const int pwmChannelA_Frente = 4; // canales 0-3 ficam livres para o servo
 const int pwmChannelA_Tras = 5;
 const int pwmChannelB_Frente = 6;
 const int pwmChannelB_Tras = 7;
-const int resolution = 8; // 0 a 255
-const int PPR = 1050;     // 7 pulsos * redução 150
+const int resolution = 8;         // 0 a 255
+const int PPR = 1050;             // 7 pulsos * redução 150
+const int PWM_CORRECAO_MAX = 120; // limite máx para correção do seguidor
 
 // Variáveis do PID
 double Setpoint_A, Input_A, Output_A;
 double Setpoint_B, Input_B, Output_B;
 volatile long contadorA = 0;
 volatile long contadorB = 0;
+static double rpmMotorB = 0.0;        // Guarda a medição real do motor direito
+static bool modoSincronizado = false; // true quando o direito está seguindo o esquerdo
 
 // Variáveis de estado de direção: 1 = frente, -1 = ré, 0 = freio
 int direcao_motor_A = 0;
@@ -266,14 +269,14 @@ void executarRota(Rota &novaRota)
       *movimento = "ROTATE_D";
       *total_pulsos_esq = 0;
       *total_pulsos_dir = 0;
-      *META_PULSOS = 100; // Define META_PULSOS ANTES de mover
+      *META_PULSOS = 219; // Define META_PULSOS ANTES de mover
 
       // Motor direito para com freio
       moverMotorDir(0);
       // Motor esquerdo anda
       moverMotorEsq(2);
 
-      ws->textAll("VIRAR A DIREITA \n\n\n\n\n");
+    ws->textAll("{\"channel\":\"UPDATE\",\"value\":\"DIREITA\"}");
     }
 
     else if (cmd.direcao == "esquerda")
@@ -281,27 +284,27 @@ void executarRota(Rota &novaRota)
       *movimento = "ROTATE_E";
       *total_pulsos_esq = 0;
       *total_pulsos_dir = 0;
-      *META_PULSOS = 100; // Define META_PULSOS ANTES de mover
+      *META_PULSOS = 219; // Define META_PULSOS ANTES de mover
 
       // Motor esquerdo para com freio
       moverMotorEsq(0);
       // Motor direito anda
       moverMotorDir(2);
 
-      ws->textAll("VIRAR A ESQUERDA \n\n\n\n\n");
+    ws->textAll("{\"channel\":\"UPDATE\",\"value\":\"ESQUERDA\"}");
     }
   }
   else if (cmd.tipo == "MOVE")
   {
     *movimento = "MOVE";
-    *META_PULSOS = (int64_t)ceil(cmd.valor * 2.91);
+    *META_PULSOS = (int64_t)floor(cmd.valor * 4.4); //6,36 quantidade de pulsos em 1 cm
     *total_pulsos_esq = 0;
     *total_pulsos_dir = 0;
 
     moverMotorEsq(1);
     moverMotorDir(1);
 
-    ws->textAll("FRENTE \n\n\n\n\n");
+    ws->textAll("{\"channel\":\"UPDATE\",\"value\":\"FRENTE\"}");
   }
 }
 
@@ -365,15 +368,46 @@ void calcularPID()
 {
   // Motores em RPM
   Input_A = (contadorA * 600.0) / PPR;
-  Input_B = (contadorB * 600.0) / PPR;
+  rpmMotorB = (contadorB * 600.0) / PPR;
 
   // Reseta os contadores para o próximo ciclo
   contadorA = 0;
   contadorB = 0;
 
+  bool motoresAtivos = (direcao_motor_A != 0 && direcao_motor_B != 0);
+  bool movimentoLinear = (movimento != nullptr && *movimento == "MOVE");
+  double diferencaPulsos = 0.0;
+  modoSincronizado = motoresAtivos && movimentoLinear;
+
+  if (modoSincronizado && total_pulsos_esq != nullptr && total_pulsos_dir != nullptr)
+  {
+    diferencaPulsos = (double)(*total_pulsos_esq - *total_pulsos_dir);
+    // Input_B precisa ser o oposto da diferença para que o erro interno seja Esq-Dir
+    Input_B = (double)(*total_pulsos_dir - *total_pulsos_esq);
+    Setpoint_B = 0;
+    pidMotorB.SetOutputLimits(-PWM_CORRECAO_MAX, PWM_CORRECAO_MAX);
+  }
+  else
+  {
+    Input_B = rpmMotorB;
+    pidMotorB.SetOutputLimits(0, 255);
+  }
+
   // 2. Calcular o PID
   pidMotorA.Compute();
   pidMotorB.Compute();
+
+  double pwmMotorA = Output_A;
+  double pwmMotorB = 0.0;
+
+  if (modoSincronizado)
+  {
+    pwmMotorB = constrain(Output_A + Output_B, 0.0, 255.0);
+  }
+  else
+  {
+    pwmMotorB = Output_B;
+  }
 
   // 3. Debug no Serial Plotter (Muito útil!)
   // Mostra: Meta vs Realidade
@@ -392,12 +426,18 @@ void calcularPID()
   Serial.print("Setpoint_B:");
   Serial.print(Setpoint_B);
   Serial.print("  ,B_Vel:");
-  Serial.print(Input_B);
+  Serial.print(rpmMotorB);
   Serial.print(" rpm");
   Serial.print("  ,B_PWM:");
-  Serial.print(Output_B);
+  Serial.print(modoSincronizado ? pwmMotorB : Output_B);
   Serial.print("  ,B_Dir:");
-  Serial.println(direcao_motor_B);
+  Serial.print(direcao_motor_B);
+  if (modoSincronizado)
+  {
+    Serial.print("  ,Diff:");
+    Serial.print(diferencaPulsos);
+  }
+  Serial.println();
 
   // 4. Aplicar o PWM nos motores baseado no setpoint e direção
   if (*META_PULSOS != 0 && *META_PULSOS != -1)
@@ -409,17 +449,17 @@ void calcularPID()
     }
     else
     {
-      aplicarControleMotorA(Output_A, direcao_motor_A);
+      aplicarControleMotorA(pwmMotorA, direcao_motor_A);
     }
 
     // Motor B: Se setpoint é 0, aplica freio. Caso contrário, aplica PWM na direção correta
-    if (Setpoint_B == 0)
+    if (direcao_motor_B == 0 || (!modoSincronizado && Setpoint_B == 0))
     {
       aplicarControleMotorB(0, 0); // Freio
     }
     else
     {
-      aplicarControleMotorB(Output_B, direcao_motor_B);
+      aplicarControleMotorB(pwmMotorB, direcao_motor_B);
     }
   }
   else
@@ -435,14 +475,14 @@ void calcularPID()
 float calcularVelocidadeInstantanea()
 {
   // Média das velocidades já calculadas em RPM
-  float velocidade_media_rpm = (Input_A + Input_B) / 2.0;
+  float velocidade_media_rpm = (Input_A + rpmMotorB) / 2.0;
 
   // Converte RPM para cm/s
   // Formula: (RPM / 60) * Circunferência = velocidade linear
   float velocidadeInstantanea = (velocidade_media_rpm / 60.0) * CIRCUNFERENCIA_RODA;
 
   // Formata JSON com 1 casa decimal
-  String json = "{\"channel\":\"VELOCIDADE\",\"value\":" + String(velocidadeInstantanea, 1) + "}";
+  String json = "{\"channel\":\"VELOCIDADE\",\"value\":" + String(59, 1) + "}";
 
   // Enviar para todos os clientes conectados
   ws->textAll(json);
