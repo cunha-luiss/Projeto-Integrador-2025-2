@@ -655,19 +655,19 @@ document.addEventListener("DOMContentLoaded", () => {
 				rotas = [];
 				renderizarRotasAnteriores();
 			} else if (data.channel === "UPDATE") {
-			    switch (data.value) {
-                case "DIREITA":
-                    atualizarStatusRota("↪️ Virando à direita...");
-                    break;
-                case "ESQUERDA":
-                    atualizarStatusRota("↩️ Virando à esquerda...");
-                    break;
-                case "FRENTE":
-                    atualizarStatusRota("⬆️ Seguindo em frente...");
-                    break;
-                default:
-                    break;
-                }
+				switch (data.value) {
+					case "DIREITA":
+						atualizarStatusRota("↪️ Virando à direita...");
+						break;
+					case "ESQUERDA":
+						atualizarStatusRota("↩️ Virando à esquerda...");
+						break;
+					case "FRENTE":
+						atualizarStatusRota("⬆️ Seguindo em frente...");
+						break;
+					default:
+						break;
+				}
 			} else if (
 				data.status === "ok" &&
 				data.message === "Dispositivo identificado"
@@ -733,12 +733,9 @@ document.addEventListener("DOMContentLoaded", () => {
 				// Oculta o botão de parar
 				ocultarBotaoParar();
 			} else if (data.channel === "VELOCIDADE") {
-				const velocidadeElements = document.querySelectorAll(
-					".status-percurso-card .status-value"
-				);
-				if (velocidadeElements.length > 0) {
-					// Primeiro card é a velocidade
-					velocidadeElements[0].textContent = `${data.value} cm/s`;
+				const velocidadeElement = document.getElementById("velocidade-value");
+				if (velocidadeElement) {
+					velocidadeElement.textContent = `${data.value} cm/s`;
 				}
 			}
 		} catch (e) {
