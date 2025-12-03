@@ -4,17 +4,23 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <vector>
+#include <ESP32Servo.h>
 #include "structures_projeto.h"
 #include "driver/pcnt.h"
 #include "motores_andar.h"
 #include "sonico.h"
 
+// Variáveis para controle do servo
+Servo servo;
+
 const char *ssid = "cegoinha";
 const char *password = "cegoinha123";
 
+#define SERVO_PIN 27
 #define ROTAS_FILE "/rotas.json"
 
 // ===== CONFIGURAÇÃO MONITORAMENTO DE BATERIA =====
+
 #define BATTERY_ADC_PIN 36        // GPIO36 (VP) - Pino ADC para leitura da bateria
 #define VOLTAGE_DIVIDER_RATIO 3.0 // Divisor de tensão (R1=20k, R2=10k) -> (R1+R2)/R2 = 3
 #define ADC_RESOLUTION 4095.0     // Resolução do ADC (12 bits)
@@ -445,7 +451,17 @@ void mensagemRecebida(AsyncWebSocketClient *client, void *metadados, uint8_t *me
     }
 
     // Processar envio de rotas
-    if (strcmp(channel, "ENVIAR_ROTAS") == 0)
+    if (strcmp(channel, "ABRIR") == 0)
+    {
+      servo.write(40);
+      ws.textAll("recebi abrir");
+    }
+    else if (strcmp(channel, "FECHAR") == 0)
+    {
+      servo.write(160);
+      ws.textAll("recebi fechar");
+    }
+    else if (strcmp(channel, "ENVIAR_ROTAS") == 0)
     {
       if (ROTA_ATUAL.comandos.size() > 0)
       {
@@ -747,6 +763,11 @@ void setup()
 
   configuraEncoderEsquerdoPCNT();
   configuraEncoderDireitoPCNT();
+
+  // servo
+  servo.attach(SERVO_PIN);
+  servo.setPeriodHertz(50);
+  servo.write(160);
 }
 
 void loop()

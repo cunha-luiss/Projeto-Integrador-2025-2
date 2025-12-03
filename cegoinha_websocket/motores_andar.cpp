@@ -21,7 +21,7 @@
 
 #define VELOCIDADE 100
 
-#define CIRCUNFERENCIA_RDOA (6.5 * PI)
+#define CIRCUNFERENCIA_RODA (6.5 * PI)
 
 static AsyncWebSocket *ws = nullptr;
 static int *PASSO_ROTA = 0;
@@ -34,10 +34,10 @@ static const int *sampleTime = nullptr;
 
 // Configurações do PWM
 const int freq = 30000;
-const int pwmChannelA_Frente = 0;
-const int pwmChannelA_Tras = 1;
-const int pwmChannelB_Frente = 2;
-const int pwmChannelB_Tras = 3;
+const int pwmChannelA_Frente = 4; // canales 0-3 ficam livres para o servo
+const int pwmChannelA_Tras = 5;
+const int pwmChannelB_Frente = 6;
+const int pwmChannelB_Tras = 7;
 const int resolution = 8; // 0 a 255
 const int PPR = 1050;     // 7 pulsos * redução 150
 
@@ -428,14 +428,26 @@ void calcularPID()
     aplicarControleMotorA(0, 0);
     aplicarControleMotorB(0, 0);
   }
+
+  calcularVelocidadeInstantanea();
 }
 
 float calcularVelocidadeInstantanea()
 {
+  // Média das velocidades já calculadas em RPM
   float velocidade_media_rpm = (Input_A + Input_B) / 2.0;
 
-  // converte RPM para cm/s
-  float velocidade_cm_s = (velocidade_media_rpm / 60.0) * CIRCUNFERENCIA_RDOA;
+  // Converte RPM para cm/s
+  // Formula: (RPM / 60) * Circunferência = velocidade linear
+  float velocidadeInstantanea = (velocidade_media_rpm / 60.0) * CIRCUNFERENCIA_RODA;
 
-  return velocidade_cm_s;
+  // Formata JSON com 1 casa decimal
+  String json = "{\"channel\":\"VELOCIDADE\",\"value\":" + String(velocidadeInstantanea, 1) + "}";
+
+  // Enviar para todos os clientes conectados
+  ws->textAll(json);
+
+  return velocidadeInstantanea;
 }
+
+// trabalhando na velocidade
