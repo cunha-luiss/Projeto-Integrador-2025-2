@@ -55,7 +55,7 @@ int direcao_motor_A = 0;
 int direcao_motor_B = 0;
 
 // Ajustes do PID (Kp, Ki, Kd) -> VOCÊ PRECISARÁ AJUSTAR ISSO DEPOIS
-double Kp = 1, Ki = 2, Kd = 0.1;
+double Kp = 2, Ki = 2, Kd = 0.1;
 
 // Criando os objetos PID
 PID pidMotorA(&Input_A, &Output_A, &Setpoint_A, Kp, Ki, Kd, DIRECT);
@@ -63,7 +63,6 @@ PID pidMotorB(&Input_B, &Output_B, &Setpoint_B, Kp, Ki, Kd, DIRECT);
 
 void motoresSetup(AsyncWebSocket *pws, int *pPASSO_ROTA, String *pmovimento, int64_t *pMETA_PULSOS, Rota *pROTA_ATUAL, volatile int64_t *ptotal_pulsos_esq, volatile int64_t *ptotal_pulsos_dir, const int *psampleTimePID)
 {
-
   ws = pws;
   PASSO_ROTA = pPASSO_ROTA;
   movimento = pmovimento;
